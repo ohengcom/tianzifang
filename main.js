@@ -8,7 +8,7 @@
  *   node main.js --init       # 仅初始化数据库
  */
 import { initDb, saveDb } from './config/db.js';
-import { COLLECT_HOURS } from './config/settings.js';
+import { COLLECT_HOURS, AMAP_API_KEY } from './config/settings.js';
 import { GovTourCollector } from './collectors/gov_tour.js';
 import { WeatherCollector } from './collectors/weather.js';
 import { HolidayCollector } from './collectors/holiday.js';
@@ -29,10 +29,10 @@ async function runCollection() {
     new HolidayCollector(),
   ];
 
-  if (process.env.AMAP_API_KEY) {
+  if (AMAP_API_KEY) {
     collectors.push(new AmapCollector());
   } else {
-    log('AMAP_API_KEY 未设置，跳过高德地图数据');
+    log('AMAP_API_KEY 未配置，跳过高德地图数据');
   }
 
   let total = 0;
