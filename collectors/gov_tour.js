@@ -34,23 +34,34 @@ export class GovTourCollector extends BaseCollector {
         const rows = Array.isArray(data?.rows) ? data.rows : [];
         const spot = rows.find(r => TIANZIFANG_NAMES.some(name => String(r.NAME || '').includes(name)));
         if (spot && spot.NUM !== undefined && spot.NUM !== null) {
+          // 检查官方 TIME 是否过期（与当前时间差 > 30 分钟）
+          let confidence = 'measured';
+          const meta = {
+            source: 'sh_a_scenic_realtime',
+            api: TOURIST_API,
+            code: spot.CODE,
+            name: spot.NAME,
+            time: spot.TIME,
+            grade: spot.GRADE,
+            comfort: spot.SSD,
+            max_num: spot.MAX_NUM,
+            type: spot.TYPE,
+            district: spot.DNAME,
+          };
+          if (spot.TIME) {
+            const apiTime = new Date(spot.TIME.replace(' ', 'T') + '+08:00');
+            const diffMin = (Date.now() - apiTime.getTime()) / 60000;
+            if (diffMin > 30) {
+              // API数据已过期（官方停止更新），不存储
+              return [];
+            }
+          }
           return [[
             'in_park_count',
             Number(spot.NUM),
             '人',
             'measured',
-            {
-              source: 'sh_a_scenic_realtime',
-              api: TOURIST_API,
-              code: spot.CODE,
-              name: spot.NAME,
-              time: spot.TIME,
-              grade: spot.GRADE,
-              comfort: spot.SSD,
-              max_num: spot.MAX_NUM,
-              type: spot.TYPE,
-              district: spot.DNAME,
-            },
+            meta,
           ]];
         }
       }
@@ -58,25 +69,7 @@ export class GovTourCollector extends BaseCollector {
       // 失败时进入估算降级，避免采集中断。
     }
 
-    // 降级：基于历史规律估算。官方接口失效时仍保留连续样本，但 confidence 会标注为 estimated。
-    if (hour < 9 || hour > 22) {
-      return [['in_park_count', 0, '人', 'estimated', { reason: 'outside_business_hours', hour }]];
-    }
-
-    const timeFactor = {
-      9: 0.05, 10: 0.15, 11: 0.25, 12: 0.30, 13: 0.28, 14: 0.30,
-      15: 0.32, 16: 0.30, 17: 0.25, 18: 0.20, 19: 0.18, 20: 0.15,
-      21: 0.10, 22: 0.05,
-    }[hour] || 0.05;
-
-    let baseDaily = wd < 5 ? 26000 : 35000;
-    if ([4, 5, 10].includes(month)) baseDaily = Math.round(baseDaily * 1.2);
-    else if ([7, 8].includes(month)) baseDaily = Math.round(baseDaily * 1.1);
-
-    const estimated = Math.round(baseDaily * timeFactor);
-
-    return [
-      ['in_park_count', estimated, '人', 'estimated', { reason: 'historical_model', base_daily: baseDaily, time_factor: timeFactor, weekday: wd }],
-    ];
+    // API数据不可用时不存储
+    return [];
   }
 }
