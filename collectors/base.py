@@ -20,6 +20,9 @@ class BaseCollector:
     def now_iso(self):
         return self.now().isoformat()
 
+    def today_str(self):
+        return self.now().strftime('%Y-%m-%d')
+
     def fetch(self, url, **kwargs):
         kwargs.setdefault("timeout", 20)
         return self.session.get(url, **kwargs)
