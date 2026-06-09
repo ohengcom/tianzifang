@@ -1,0 +1,23 @@
+{
+  "name": "早间汇报",
+  "description": "每天 08:00 自动执行，包含天气、田子坊数据、Gmail、新闻、申购提醒等",
+  "schedule": {
+    "kind": "cron",
+    "expr": "0 8 * * *",
+    "tz": "Asia/Shanghai"
+  },
+  "sessionTarget": "isolated",
+  "payload": {
+    "kind": "agentTurn",
+    "timeoutSeconds": 180,
+    "lightContext": true,
+    "message": "执行早间汇报，按以下顺序完成所有检查后汇总为一条消息：\n\n1. 天气：检查上海今天天气，提醒是否需要带伞或注意什么\n2. 田子坊数据：运行 cd /home/node/.openclaw/workspace/tianzifang && node main.js --report-yesterday，把脚本输出原样附上\n3. Gmail 邮件（export GOG_KEYRING_PASSWORD=\"***\" && gog gmail list \"newer_than:1d is:unread\" -a lixiaoheng@gmail.com -j --results-only），如有重要未读邮件简要汇总，无则跳过\n4. 60s 新闻：请求 https://60s.viki.moe/v2/60s ，核对 data.date 是否为今天，显示全部新闻条目不截断；API 失败则如实说明\n5. 申购提醒：读取 /home/node/.openclaw/workspace/output/ipo-check-current.json ，只输出新股申购和新债申购（有则列名称，无则写"今日无X股/债申购"），不输出新股上市\n6. 炉石传说黄金联赛/黄金棋坛：只在确认有今天仍相关的新消息时才写入\n7. 中国世界遗产：搜索相关新闻，无新消息则写"今日暂未确认到相关新消息"\n8. 广西大学：搜索相关新闻，无新消息则写"今日暂未确认到相关新消息"\n9. 广西南宁重大事件：搜索相关新闻，无新消息则写"今日暂未确认到相关新消息"\n\n输出格式：\n2026-MM-DD 早间汇报\n\n1. 天气\n- ...\n\n2. 昨日重要新闻摘要\n- ...\n\n3. 今日申购提醒\n- 新股申购：...\n- 新债申购：...\n\n4. Gmail 邮件（如有重要未读）\n- ...\n\n5. 田子坊数据\n- ...\n\n6. 炉石传说黄金联赛/黄金棋坛\n- ...\n\n7. 中国世界遗产\n- ...\n\n8. 广西大学\n- ...\n\n9. 广西南宁重大事件\n- ...\n\n自检：60s 是否请求过且全部显示、ipo 文件是否读取过、田子坊脚本是否运行过、各搜索是否执行过。自检不输出。"
+  },
+  "delivery": {
+    "mode": "announce",
+    "channel": "qqbot",
+    "to": "qqbot:c2c:01BBD12CCD69F1E9D77D4C3D1AB5FE51",
+    "accountId": "default"
+  },
+  "note": "田子坊数据作为第2项自动包含，运行 node main.js --report-yesterday"
+}

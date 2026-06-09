@@ -1,0 +1,207 @@
+{
+  "updatedAt": "2026-06-03T03:32:31.554Z",
+  "createdAt": "2026-06-02T00:21:17.922Z",
+  "id": "xVrjM86X1PHTDm5N",
+  "name": "田子坊数据采集",
+  "description": "每5分钟采集(7-18点): gov_tour(在园人数) + weather(天气) + holiday(节假日)",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "*/5 7-18 * * *"
+            }
+          ]
+        }
+      },
+      "id": "node-trigger",
+      "name": "每5分钟触发",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://tourist.whlyj.sh.gov.cn/api/statistics/getViewTourist",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Referer",
+              "value": "https://tourist.whlyj.sh.gov.cn/MobileWebSite/Tourist_Main.html"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "node-gov",
+      "name": "获取景区数据",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        470,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://wttr.in/Shanghai?format=j1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "node-weather",
+      "name": "获取天气",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        690,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = [];\nconst ts = new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Shanghai' }).replace(' ', 'T') + '+08:00';\n\n// 1. Gov tour\ntry {\n  const govData = $('获取景区数据').first().json;\n  const spot = (govData.rows || []).find(r => String(r.NAME || '').includes('田子坊'));\n  if (spot && spot.NUM !== undefined && spot.NUM !== null) {\n    let skip = false;\n    if (spot.TIME) {\n      const apiTime = new Date(spot.TIME.replace(' ', 'T') + '+08:00');\n      if ((Date.now() - apiTime.getTime()) / 60000 > 30) skip = true;\n    }\n    if (!skip) {\n      const raw = JSON.stringify({ source: 'sh_a_scenic_realtime', code: spot.CODE, name: spot.NAME, time: spot.TIME, grade: spot.GRADE, comfort: spot.SSD, max_num: spot.MAX_NUM, type: spot.TYPE, district: spot.DNAME }).replace(/'/g, \"''\");\n      results.push({ sql: \"INSERT INTO crowd_data (ts, source, metric, value, unit, confidence, raw_json) VALUES ('\" + ts + \"', 'gov_tour', 'in_park_count', \" + Number(spot.NUM) + \", '人', 'measured', '\" + raw + \"')\", label: 'gov_tour' });\n    }\n  }\n} catch (e) {}\n\n// 2. Weather - wttr.in format=j1\ntry {\n  const wData = $('获取天气').first().json;\n  const c = wData.current_condition?.[0] || {};\n  const today = wData.weather?.[0] || {};\n  const tempC = parseFloat(c.temp_C);\n  const humidity = parseInt(c.humidity);\n  const windKmph = parseFloat(c.windspeedKmph);\n  const desc = c.lang_zh?.[0]?.value || c.weatherDesc?.[0]?.value || '';\n  const feelsLike = parseFloat(c.FeelsLikeC);\n\n  if (!isNaN(tempC)) {\n    results.push({ sql: \"INSERT INTO crowd_data (ts, source, metric, value, unit, confidence, raw_json) VALUES ('\" + ts + \"', 'weather', 'temperature', \" + tempC + \", '℃', 'measured', '\" + JSON.stringify({ feels_like: feelsLike }).replace(/'/g, \"''\") + \"')\", label: 'weather.temperature' });\n  }\n  if (!isNaN(humidity)) {\n    results.push({ sql: \"INSERT INTO crowd_data (ts, source, metric, value, unit, confidence, raw_json) VALUES ('\" + ts + \"', 'weather', 'humidity', \" + humidity + \", '%', 'measured', '{}')\", label: 'weather.humidity' });\n  }\n  if (!isNaN(windKmph)) {\n    results.push({ sql: \"INSERT INTO crowd_data (ts, source, metric, value, unit, confidence, raw_json) VALUES ('\" + ts + \"', 'weather', 'wind_speed', \" + windKmph + \", 'km/h', 'measured', '{}')\", label: 'weather.wind_speed' });\n  }\n  if (desc) {\n    results.push({ sql: \"INSERT INTO crowd_data (ts, source, metric, value, unit, confidence, raw_json) VALUES ('\" + ts + \"', 'weather', 'weather_desc', 0, '\" + desc + \"', 'measured', '{}')\", label: 'weather.weather_desc' });\n  }\n  const maxTemp = parseFloat(today.maxtempC);\n  const minTemp = parseFloat(today.mintempC);\n  if (!isNaN(maxTemp)) {\n    results.push({ sql: \"INSERT INTO crowd_data (ts, source, metric, value, unit, confidence, raw_json) VALUES ('\" + ts + \"', 'weather', 'temperature_max', \" + maxTemp + \", '℃', 'measured', '{}')\", label: 'weather.temp_max' });\n  }\n  if (!isNaN(minTemp)) {\n    results.push({ sql: \"INSERT INTO crowd_data (ts, source, metric, value, unit, confidence, raw_json) VALUES ('\" + ts + \"', 'weather', 'temperature_min', \" + minTemp + \", '℃', 'measured', '{}')\", label: 'weather.temp_min' });\n  }\n} catch (e) {}\n\n// 3. Holiday - 每天只写一次\ntry {\n  const now = new Date();\n  const month = now.toLocaleDateString('en-US', { timeZone: 'Asia/Shanghai', month: 'numeric' }) * 1;\n  const day = now.toLocaleDateString('en-US', { timeZone: 'Asia/Shanghai', day: 'numeric' }) * 1;\n  const weekday = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Shanghai' })).getDay();\n  const wd = weekday === 0 ? 6 : weekday - 1;\n  const holidays = [[1,1,'元旦'],[1,2,'元旦假期'],[1,3,'元旦假期'],[2,15,'春节假期'],[2,16,'除夕'],[2,17,'春节'],[2,18,'春节假期'],[2,19,'春节假期'],[2,20,'春节假期'],[2,21,'春节假期'],[2,22,'春节假期'],[2,23,'春节假期'],[4,4,'清明节'],[4,5,'清明假期'],[4,6,'清明假期'],[5,1,'劳动节'],[5,2,'劳动节假期'],[5,3,'劳动节假期'],[5,4,'劳动节假期'],[5,5,'劳动节假期'],[6,19,'端午节'],[6,20,'端午假期'],[6,21,'端午假期'],[9,25,'中秋节'],[9,26,'中秋假期'],[9,27,'中秋假期'],[10,1,'国庆节'],[10,2,'国庆假期'],[10,3,'国庆假期'],[10,4,'国庆假期'],[10,5,'国庆假期'],[10,6,'国庆假期'],[10,7,'国庆假期']];\n  const workdays = [[1,4,'元旦调休上班'],[2,14,'春节调休上班'],[2,28,'春节调休上班'],[5,9,'劳动节调休上班'],[9,20,'国庆调休上班'],[10,10,'国庆调休上班']];\n  let isHoliday = 0, holidayName = '';\n  for (const [m, d, n] of holidays) { if (m === month && d === day) { isHoliday = 1; holidayName = n; break; } }\n  let isWorkdayOverride = false;\n  for (const [m, d, n] of workdays) { if (m === month && d === day) { isWorkdayOverride = true; holidayName = n; break; } }\n  const isWorkday = (wd < 5 && !isHoliday) || isWorkdayOverride ? 1 : 0;\n  const hRecords = [\n    ['is_holiday', isHoliday, 'bool', 'measured', JSON.stringify({ holiday_name: holidayName }).replace(/'/g, \"''\")],\n    ['is_workday', isWorkday, 'bool', 'measured', JSON.stringify({ weekday: wd, override: isWorkdayOverride }).replace(/'/g, \"''\")],\n    ['weekday', wd, 'day', 'measured', '{}']\n  ];\n  for (const [metric, value, unit, conf, raw] of hRecords) {\n    results.push({ sql: \"INSERT INTO crowd_data (ts, source, metric, value, unit, confidence, raw_json) VALUES ('\" + ts + \"', 'holiday', '\" + metric + \"', \" + value + \", '\" + unit + \"', '\" + conf + \"', '\" + raw + \"')\", label: 'holiday.' + metric });\n  }\n} catch (e) {}\n\nreturn results.map(r => ({ json: r }));"
+      },
+      "id": "node-merge",
+      "name": "合并写入",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        910,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://ep-sweet-river-aovxgd0t-pooler.c-2.ap-southeast-1.aws.neon.tech/sql",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Neon-Connection-String",
+              "value": "postgresql://neondb_owner:npg_mpiqNezA87rx@ep-sweet-river-aovxgd0t-pooler.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: $json.sql }) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "node-insert",
+      "name": "写入Neon",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1130,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nreturn [{ json: { count: items.length, labels: items.map(i => i.json.label || 'unknown'), status: 'ok' } }];"
+      },
+      "id": "node-summary",
+      "name": "汇总结果",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1350,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "每5分钟触发": {
+      "main": [
+        [
+          {
+            "node": "获取景区数据",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "获取景区数据": {
+      "main": [
+        [
+          {
+            "node": "获取天气",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "获取天气": {
+      "main": [
+        [
+          {
+            "node": "合并写入",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "合并写入": {
+      "main": [
+        [
+          {
+            "node": "写入Neon",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "写入Neon": {
+      "main": [
+        [
+          {
+            "node": "汇总结果",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "versionId": "52bcf8b5-e700-44a9-b926-9d0267e768f3"
+}
