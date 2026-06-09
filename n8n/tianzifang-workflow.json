@@ -21,10 +21,7 @@
       "name": "每5分钟触发",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [
-        250,
-        300
-      ]
+      "position": [250, 300]
     },
     {
       "parameters": {
@@ -55,10 +52,7 @@
       "name": "获取景区数据",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [
-        470,
-        300
-      ]
+      "position": [470, 300]
     },
     {
       "parameters": {
@@ -81,10 +75,7 @@
       "name": "获取天气",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [
-        690,
-        300
-      ]
+      "position": [690, 300]
     },
     {
       "parameters": {
@@ -94,10 +85,7 @@
       "name": "合并写入",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        910,
-        300
-      ]
+      "position": [910, 300]
     },
     {
       "parameters": {
@@ -108,7 +96,7 @@
           "parameters": [
             {
               "name": "Neon-Connection-String",
-              "value": "postgresql://neondb_owner:npg_mpiqNezA87rx@ep-sweet-river-aovxgd0t-pooler.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
+              "value": "={{ $env.NEON_URL }}"
             },
             {
               "name": "Content-Type",
@@ -127,10 +115,7 @@
       "name": "写入Neon",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [
-        1130,
-        300
-      ]
+      "position": [1130, 300]
     },
     {
       "parameters": {
@@ -140,10 +125,7 @@
       "name": "汇总结果",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        1350,
-        300
-      ]
+      "position": [1350, 300]
     }
   ],
   "connections": {

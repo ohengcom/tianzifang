@@ -42,6 +42,9 @@ class PgWrapper {
 
 export async function getDb() {
   if (_client) return _client;
+  if (!NEON_URL) {
+    throw new Error('NEON_URL environment variable is required');
+  }
   const client = new Client({
     connectionString: NEON_URL,
     ssl: { rejectUnauthorized: false },

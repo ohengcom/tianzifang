@@ -106,7 +106,14 @@ tianzifang/
 
 Neon PostgreSQL（`crowd_data` 表 + `daily_summary` 表）
 
-连接配置在 `config/settings.js`，通过环境变量 `NEON_URL` 或硬编码默认值。
+连接配置通过环境变量 `NEON_URL` 提供。不要把真实数据库 URI 提交到仓库。
+
+本地运行示例：
+
+```bash
+cp .env.example .env
+# Fill NEON_URL in .env, then load it with your shell or runtime environment.
+```
 
 ## Notes
 
