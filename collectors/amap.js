@@ -1,4 +1,4 @@
-import { AMAP_API_KEY, TIANZIFANG_LNG, TIANZIFANG_LAT } from '../config/settings.js';
+import { AMAP_API_KEY, TIANZIFANG_LAT, TIANZIFANG_LNG } from '../config/settings.js';
 import { BaseCollector } from './base.js';
 
 export class AmapCollector extends BaseCollector {
@@ -19,7 +19,13 @@ export class AmapCollector extends BaseCollector {
       const data = await this.fetchJSON(url);
       if (data.status === '1' && data.trafficinfo?.roads) {
         for (const road of data.trafficinfo.roads.slice(0, 3)) {
-          records.push(['road_congestion', parseFloat(road.speed || 0), 'km/h', 'measured', { road: road.name, direction: road.direction }]);
+          records.push([
+            'road_congestion',
+            parseFloat(road.speed || 0),
+            'km/h',
+            'measured',
+            { road: road.name, direction: road.direction },
+          ]);
         }
       }
     } catch {}
@@ -28,7 +34,13 @@ export class AmapCollector extends BaseCollector {
       const url = `https://restapi.amap.com/v3/place/around?key=${AMAP_API_KEY}&location=${TIANZIFANG_LNG},${TIANZIFANG_LAT}&radius=500&types=050000&offset=25&page=1`;
       const data = await this.fetchJSON(url);
       if (data.status === '1') {
-        records.push(['nearby_poi_count', parseInt(data.count || 0), '个', 'measured', { type: '餐饮', radius: '500m' }]);
+        records.push([
+          'nearby_poi_count',
+          parseInt(data.count || 0, 10),
+          '个',
+          'measured',
+          { type: '餐饮', radius: '500m' },
+        ]);
       }
     } catch {}
 

@@ -11,10 +11,13 @@ export class GovTourCollector extends BaseCollector {
 
   async collect() {
     const now = new Date();
-    const hour = parseInt(now.toLocaleTimeString('en-US', { timeZone: 'Asia/Shanghai', hour12: false, hour: '2-digit' }));
+    const _hour = parseInt(
+      now.toLocaleTimeString('en-US', { timeZone: 'Asia/Shanghai', hour12: false, hour: '2-digit' }),
+      10,
+    );
     const weekday = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Shanghai' })).getDay();
-    const month = now.toLocaleDateString('en-US', { timeZone: 'Asia/Shanghai', month: 'numeric' }) * 1;
-    const wd = weekday === 0 ? 6 : weekday - 1;
+    const _month = now.toLocaleDateString('en-US', { timeZone: 'Asia/Shanghai', month: 'numeric' }) * 1;
+    const _wd = weekday === 0 ? 6 : weekday - 1;
 
     // 官方数据源：上海市A级景区实时发布系统。
     // 页面实际调用 /api/statistics/getViewTourist，返回全市A级景区实时客流；
@@ -24,18 +27,18 @@ export class GovTourCollector extends BaseCollector {
         signal: AbortSignal.timeout(15000),
         headers: {
           'User-Agent': 'Mozilla/5.0',
-          'Accept': 'application/json',
-          'Referer': 'https://tourist.whlyj.sh.gov.cn/MobileWebSite/Tourist_Main.html',
+          Accept: 'application/json',
+          Referer: 'https://tourist.whlyj.sh.gov.cn/MobileWebSite/Tourist_Main.html',
         },
       });
 
       if (resp.ok) {
         const data = await resp.json();
         const rows = Array.isArray(data?.rows) ? data.rows : [];
-        const spot = rows.find(r => TIANZIFANG_NAMES.some(name => String(r.NAME || '').includes(name)));
+        const spot = rows.find((r) => TIANZIFANG_NAMES.some((name) => String(r.NAME || '').includes(name)));
         if (spot && spot.NUM !== undefined && spot.NUM !== null) {
           // 检查官方 TIME 是否过期（与当前时间差 > 30 分钟）
-          let confidence = 'measured';
+          const _confidence = 'measured';
           const meta = {
             source: 'sh_a_scenic_realtime',
             api: TOURIST_API,
@@ -49,23 +52,17 @@ export class GovTourCollector extends BaseCollector {
             district: spot.DNAME,
           };
           if (spot.TIME) {
-            const apiTime = new Date(spot.TIME.replace(' ', 'T') + '+08:00');
+            const apiTime = new Date(`${spot.TIME.replace(' ', 'T')}+08:00`);
             const diffMin = (Date.now() - apiTime.getTime()) / 60000;
             if (diffMin > 30) {
               // API数据已过期（官方停止更新），不存储
               return [];
             }
           }
-          return [[
-            'in_park_count',
-            Number(spot.NUM),
-            '人',
-            'measured',
-            meta,
-          ]];
+          return [['in_park_count', Number(spot.NUM), '人', 'measured', meta]];
         }
       }
-    } catch (e) {
+    } catch (_e) {
       // 失败时进入估算降级，避免采集中断。
     }
 

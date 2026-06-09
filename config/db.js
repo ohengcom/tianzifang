@@ -1,21 +1,23 @@
 import pg from 'pg';
+
 const { Client } = pg;
+
 import { NEON_URL } from './settings.js';
 
 let _client = null;
 
-// Wrapper to mimic sql.js API on top of pg
+// Small query wrapper on top of pg.
 class PgWrapper {
   constructor(client) {
     this._client = client;
   }
 
   // db.exec(sql) → [{ columns, values }]
-  async exec(sql) {
-    const result = await this._client.query(sql);
+  async exec(sql, params = []) {
+    const result = await this._client.query(sql, params);
     if (!result.rows.length) return [];
-    const columns = result.fields.map(f => f.name);
-    const values = result.rows.map(row => columns.map(c => row[c]));
+    const columns = result.fields.map((f) => f.name);
+    const values = result.rows.map((row) => columns.map((c) => row[c]));
     return [{ columns, values }];
   }
 
@@ -31,7 +33,9 @@ class PgWrapper {
       async run(params = []) {
         await client.query(sql, params);
       },
-      free() { /* no-op for pg */ }
+      free() {
+        /* no-op for pg */
+      },
     };
   }
 }
@@ -40,14 +44,14 @@ export async function getDb() {
   if (_client) return _client;
   const client = new Client({
     connectionString: NEON_URL,
-    ssl: { rejectUnauthorized: false }
+    ssl: { rejectUnauthorized: false },
   });
   await client.connect();
   _client = new PgWrapper(client);
   return _client;
 }
 
-export function saveDb(db) {
+export function saveDb(_db) {
   // PostgreSQL auto-commits, nothing to do
 }
 

@@ -13,7 +13,7 @@ export class WeatherCollector extends BaseCollector {
       const current = data.current_condition?.[0] || {};
       const temp = parseFloat(current.temp_C || 0);
       const feelsLike = parseFloat(current.FeelsLikeC || 0);
-      const humidity = parseInt(current.humidity || 0);
+      const humidity = parseInt(current.humidity || 0, 10);
       const windSpeed = parseFloat(current.windspeedKmph || 0);
       const desc = current.lang_zh?.[0]?.value || current.weatherDesc?.[0]?.value || '';
 

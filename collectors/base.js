@@ -10,7 +10,7 @@ export class BaseCollector {
   }
 
   nowISO() {
-    return new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Shanghai' }).replace(' ', 'T') + '+08:00';
+    return `${new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Shanghai' }).replace(' ', 'T')}+08:00`;
   }
 
   todayStr() {
@@ -40,7 +40,7 @@ export class BaseCollector {
     for (const [metric, value, unit, confidence, raw] of records) {
       await db.run(
         'INSERT INTO crowd_data (ts, source, metric, value, unit, confidence, raw_json) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-        [ts, this.name, metric, value, unit, confidence, raw ? JSON.stringify(raw) : null]
+        [ts, this.name, metric, value, unit, confidence, raw ? JSON.stringify(raw) : null],
       );
       count++;
     }

@@ -1,11 +1,29 @@
 {
   "name": "tianzifang-crowd",
-  "version": "1.0.0",
-  "description": "田子坊人流数据采集与分析",
+  "version": "1.1.0",
+  "description": "Tianzifang crowd data collection and analysis",
   "type": "module",
   "dependencies": {
-    "node-cron": "^3.0.0",
-    "pg": "^8.21.0",
-    "sql.js": "^1.10.0"
+    "node-cron": "^4.2.1",
+    "pg": "^8.21.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.16",
+    "vitest": "^4.1.8"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "start": "node main.js --schedule",
+    "collect": "node main.js",
+    "init": "node main.js --init",
+    "summary": "node main.js --summary",
+    "report:yesterday": "node main.js --report-yesterday",
+    "query": "node analysis/query.js",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "test": "vitest run",
+    "check": "npm run lint && npm run test"
   }
 }
