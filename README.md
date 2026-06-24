@@ -17,7 +17,6 @@ Current version: `1.1.0`
 | Source | Collector | Notes |
 | --- | --- | --- |
 | Shanghai A-level scenic realtime API | `collectors/gov_tour.js` | In-park count and official metadata |
-| Amap API | `collectors/amap.js` | Nearby traffic and POI signals |
 | wttr.in | `collectors/weather.js` | Weather and temperature signals |
 | Local holiday table | `collectors/holiday.js` | 2026 holiday/workday flags |
 
@@ -99,7 +98,6 @@ tianzifang/
 本地模式的采集频率：
 - 基础采集（估算段）：06:00-08:30 每 30 分钟
 - 基础采集（实测段）：09:00-21:55 每 5 分钟
-- 高德数据：09:00-21:55 每 30 分钟
 - 日汇总：23:30
 
 ## 数据库
