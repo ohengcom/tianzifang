@@ -11,10 +11,10 @@ export class WeatherCollector extends BaseCollector {
     try {
       const data = await this.fetchJSON('https://wttr.in/Shanghai?format=j1');
       const current = data.current_condition?.[0] || {};
-      const temp = parseFloat(current.temp_C || 0);
-      const feelsLike = parseFloat(current.FeelsLikeC || 0);
-      const humidity = parseInt(current.humidity || 0, 10);
-      const windSpeed = parseFloat(current.windspeedKmph || 0);
+      const temp = current.temp_C != null ? parseFloat(current.temp_C) : null;
+      const feelsLike = current.FeelsLikeC != null ? parseFloat(current.FeelsLikeC) : null;
+      const humidity = current.humidity != null ? parseInt(current.humidity, 10) : null;
+      const windSpeed = current.windspeedKmph != null ? parseFloat(current.windspeedKmph) : null;
       const desc = current.lang_zh?.[0]?.value || current.weatherDesc?.[0]?.value || '';
 
       records.push(['temperature', temp, '℃', 'measured', { feels_like: feelsLike }]);
@@ -22,14 +22,14 @@ export class WeatherCollector extends BaseCollector {
       records.push(['wind_speed', windSpeed, 'km/h', 'measured', {}]);
 
       const today = data.weather?.[0] || {};
-      if (today.maxtempC) {
+      if (today.maxtempC != null) {
         records.push(['temperature_max', parseFloat(today.maxtempC), '℃', 'measured', {}]);
         records.push(['temperature_min', parseFloat(today.mintempC), '℃', 'measured', {}]);
       }
 
-      records.push(['weather_desc', 0, desc, 'measured', { raw: current }]);
+      records.push(['weather_desc', null, desc, 'measured', { raw: current }]);
     } catch (e) {
-      records.push(['weather_status', 0, 'error', 'unavailable', { error: e.message }]);
+      records.push(['weather_status', null, 'error', 'unavailable', { error: e.message }]);
     }
     return records;
   }

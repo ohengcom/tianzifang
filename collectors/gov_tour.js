@@ -10,15 +10,6 @@ export class GovTourCollector extends BaseCollector {
   }
 
   async collect() {
-    const now = new Date();
-    const _hour = parseInt(
-      now.toLocaleTimeString('en-US', { timeZone: 'Asia/Shanghai', hour12: false, hour: '2-digit' }),
-      10,
-    );
-    const weekday = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Shanghai' })).getDay();
-    const _month = now.toLocaleDateString('en-US', { timeZone: 'Asia/Shanghai', month: 'numeric' }) * 1;
-    const _wd = weekday === 0 ? 6 : weekday - 1;
-
     // 官方数据源：上海市A级景区实时发布系统。
     // 页面实际调用 /api/statistics/getViewTourist，返回全市A级景区实时客流；
     // 其中田子坊记录 NAME=上海田子坊景区，字段 NUM=在园人数，MAX_NUM=瞬时最大承载量，SSD=舒适度。
@@ -37,8 +28,6 @@ export class GovTourCollector extends BaseCollector {
         const rows = Array.isArray(data?.rows) ? data.rows : [];
         const spot = rows.find((r) => TIANZIFANG_NAMES.some((name) => String(r.NAME || '').includes(name)));
         if (spot && spot.NUM !== undefined && spot.NUM !== null) {
-          // 检查官方 TIME 是否过期（与当前时间差 > 30 分钟）
-          const _confidence = 'measured';
           const meta = {
             source: 'sh_a_scenic_realtime',
             api: TOURIST_API,
@@ -61,9 +50,11 @@ export class GovTourCollector extends BaseCollector {
           }
           return [['in_park_count', Number(spot.NUM), '人', 'measured', meta]];
         }
+      } else {
+        console.error(`[gov_tour] HTTP ${resp.status}`);
       }
-    } catch (_e) {
-      // 失败时进入估算降级，避免采集中断。
+    } catch (e) {
+      console.error(`[gov_tour] 请求失败: ${e.message}`);
     }
 
     // API数据不可用时不存储

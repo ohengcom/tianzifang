@@ -26,16 +26,21 @@ export async function showDate(dateStr) {
   const rows = await db.exec(
     `
       SELECT ts, value, confidence FROM crowd_data
-      WHERE source = $1 AND metric = $2 AND ts LIKE $3
+      WHERE source = $1 AND metric = $2
+        AND ts >= $3::timestamptz AND ts < ($3::timestamptz + interval '1 day')
       ORDER BY ts
     `,
-    ['gov_tour', 'in_park_count', `${date}%`],
+    ['gov_tour', 'in_park_count', `${date}T00:00:00+08:00`],
   );
 
   if (rows.length > 0 && rows[0].values.length > 0) {
     console.log(`\nIn-park count (${rows[0].values.length} rows):`);
     for (const [ts, value, confidence] of rows[0].values) {
-      const time = ts.substring(11, 16);
+      const time = new Date(ts).toLocaleTimeString('sv-SE', {
+        timeZone: 'Asia/Shanghai',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
       const marker = confidence === 'measured' ? 'measured' : 'derived';
       console.log(`  ${time}  ${marker.padEnd(8)} ${String(Math.round(value)).padStart(6)} people`);
     }
@@ -46,10 +51,11 @@ export async function showDate(dateStr) {
   const weather = await db.exec(
     `
       SELECT metric, value, unit FROM crowd_data
-      WHERE source = $1 AND ts LIKE $2
+      WHERE source = $1
+        AND ts >= $2::timestamptz AND ts < ($2::timestamptz + interval '1 day')
       ORDER BY ts, metric
     `,
-    ['weather', `${date}%`],
+    ['weather', `${date}T00:00:00+08:00`],
   );
   if (weather.length > 0 && weather[0].values.length > 0) {
     console.log('\nWeather:');
