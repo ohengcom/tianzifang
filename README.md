@@ -2,7 +2,7 @@
 
 Collects and summarizes Tianzifang crowd-related signals with a single Node.js runtime and PostgreSQL storage.
 
-Current version: `1.2.0`
+Current version: `1.3.0`
 
 ## Stack
 
@@ -29,6 +29,10 @@ npm run collect
 npm run summary
 npm run report:yesterday
 npm run query -- today
+npm run v2:init
+npm run v2:backfill:weather -- 2025-10-03 2026-07-07
+npm run v2:derive -- 2025-10-03 2026-07-07
+npm run v2:summary
 npm start          # 启动本地定时采集 (--schedule)
 ```
 
@@ -47,9 +51,11 @@ tianzifang/
   analysis/        Query CLI and tests
   collectors/      Data collectors
   config/          Runtime settings and PostgreSQL wrapper
+  docs/            Architecture and upgrade notes
   main.js          Collection, summary, report, and scheduler entrypoint
   n8n/             N8N 工作流导出（备份）
   openclaw/        OpenClaw 定时任务配置（备份）
+  v2/              Normalized observation and feature derivation layer
 ```
 
 ## 系统架构与执行方式
@@ -121,6 +127,7 @@ This project intentionally supports the Neon PostgreSQL path only. There is no l
 - `npm run init` applies idempotent Neon schema setup, creates query indexes, and records the applied schema version in `schema_migrations`.
 - Collector HTTP failures are recorded through collector status rows; normal successful responses with no fresh scenic data write zero metric rows.
 - Holiday data is strict for configured tables, but production collection falls back to weekday/workday markers with `confidence='unavailable'` if a future year has not been configured yet.
+- v2 adds `data_sources`, `collection_runs`, `observations`, and `daily_features` while preserving legacy tables. See [`docs/V2_UPGRADE.md`](docs/V2_UPGRADE.md).
 
 ## Data Semantics
 
@@ -136,6 +143,14 @@ This project intentionally supports the Neon PostgreSQL path only. There is no l
 - Source files are UTF-8. If PowerShell displays Chinese text as mojibake, verify with a UTF-8 reader before treating the file as corrupted.
 
 ## Release Notes
+
+### 1.3.0
+
+- Added the v2 normalized Neon observation model, source registry, collection run log, and daily feature table.
+- Added a legacy sync trigger so existing `crowd_data` writes flow into v2 observations.
+- Added Open-Meteo Archive historical weather backfill with Zod runtime validation.
+- Added daily feature derivation based on occupancy statistics, coverage, person-hours, and dwell-time assumptions.
+- Documented the v2 architecture, data semantics, migration commands, and next upgrade plan.
 
 ### 1.2.0
 

@@ -1,11 +1,12 @@
 {
   "name": "tianzifang-crowd",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Tianzifang crowd data collection and analysis",
   "type": "module",
   "dependencies": {
     "node-cron": "^4.6.0",
-    "pg": "^8.22.0"
+    "pg": "^8.22.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.2",
@@ -21,6 +22,10 @@
     "summary": "node --env-file=.env main.js --summary",
     "report:yesterday": "node --env-file=.env main.js --report-yesterday",
     "query": "node --env-file=.env analysis/query.js",
+    "v2:init": "node --env-file=.env analysis/v2.js init",
+    "v2:backfill:weather": "node --env-file=.env analysis/v2.js backfill-weather",
+    "v2:derive": "node --env-file=.env analysis/v2.js derive",
+    "v2:summary": "node --env-file=.env analysis/v2.js summary",
     "lint": "biome check .",
     "format": "biome format --write .",
     "test": "vitest run",

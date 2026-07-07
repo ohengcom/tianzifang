@@ -3,6 +3,7 @@ import pg from 'pg';
 const { Pool } = pg;
 
 import { NEON_URL } from './settings.js';
+import { initV2Db } from './v2_schema.js';
 
 let _db = null;
 
@@ -38,6 +39,10 @@ class PgWrapper {
         /* no-op for pg */
       },
     };
+  }
+
+  async close() {
+    await this._pool.end();
   }
 }
 
@@ -177,5 +182,13 @@ export async function initDb() {
     `,
     ['2026-07-07-neon-core-schema', 'Neon PostgreSQL schema, idempotent columns, upsert keys, and query indexes'],
   );
+
+  await initV2Db(db);
   return db;
+}
+
+export async function closeDb() {
+  if (!_db) return;
+  await _db.close();
+  _db = null;
 }
