@@ -1,0 +1,374 @@
+[
+  {
+    "id": "shanghai-volunteer-2024-mayday-large-crowd-service",
+    "observedAt": "2024-05-01",
+    "metric": "activity_event",
+    "granularity": "period",
+    "valueText": "May Day holiday large-crowd volunteer service at Tianzifang",
+    "quality": "reported",
+    "confidence": 0.6,
+    "comparator": "eq",
+    "source": {
+      "sourceId": "reported_activity_shanghai_volunteer",
+      "sourceType": "activity_report",
+      "displayName": "Shanghai Volunteer Tianzifang activity anchors",
+      "reliability": 0.62,
+      "cadence": "ad hoc",
+      "notes": "Activity/event context rather than measured crowd telemetry."
+    },
+    "period": {
+      "start": "2024-05-01",
+      "end": "2024-05-05",
+      "precision": "holiday period"
+    },
+    "provenance": {
+      "title": "?????????????????????",
+      "url": "https://www.volunteer.sh.cn/zyzxw/2024/05/07/98c7d64e-27e7-45ac-8d28-73b527fff714.shtml",
+      "publisher": "?????",
+      "publishedAt": "2024-05-07",
+      "quote": "??????????",
+      "retrievedAt": "2026-07-07",
+      "verification": "Search result and page text identify May Day large-crowd volunteer service."
+    },
+    "notes": "Context anchor only; no numeric visitor count was published in this source."
+  },
+  {
+    "id": "sina-2024-aug-short-video-traffic-gt-20000",
+    "observedAt": "2024-08-02",
+    "metric": "reported_peak_daily_visitors",
+    "granularity": "period",
+    "valueNum": 20000,
+    "unit": "person-visits",
+    "quality": "reported",
+    "confidence": 0.55,
+    "comparator": "gte",
+    "source": {
+      "sourceId": "reported_crowd_sina",
+      "sourceType": "media_report",
+      "displayName": "Sina reported Tianzifang crowd anchors",
+      "reliability": 0.63,
+      "cadence": "ad hoc",
+      "notes": "Secondary report; use with explicit quote and confidence."
+    },
+    "period": {
+      "start": "2024-07-01",
+      "end": "2024-08-02",
+      "precision": "reported current operating period"
+    },
+    "provenance": {
+      "title": "144??????????????????????????",
+      "url": "https://finance.sina.cn/2024-08-02/detail-inchfezi7281188.d.html",
+      "publisher": "????",
+      "publishedAt": "2024-08-02",
+      "quote": "??????????10%???2???",
+      "retrievedAt": "2026-07-07",
+      "verification": "Search result snippet exposes the visitor and online promotion figures."
+    },
+    "notes": "Treat as a lower-confidence reported period anchor because the exact day/window is not explicit."
+  },
+  {
+    "id": "cicphoto-2025-april-single-day-peak-32000",
+    "observedAt": "2025-04-07",
+    "metric": "reported_peak_daily_visitors",
+    "granularity": "period",
+    "valueNum": 32000,
+    "unit": "person-visits/day",
+    "quality": "reported",
+    "confidence": 0.72,
+    "comparator": "eq",
+    "source": {
+      "sourceId": "reported_crowd_cicphoto",
+      "sourceType": "news_photo",
+      "displayName": "Xinhua/CICPhoto Tianzifang crowd anchors",
+      "reliability": 0.7,
+      "cadence": "ad hoc",
+      "notes": "News/photo archive statements; useful as reported historical anchors."
+    },
+    "period": {
+      "start": "2025-04-01",
+      "end": "2025-04-30",
+      "precision": "April 2025 reported peak"
+    },
+    "provenance": {
+      "title": "??????? ?????????????????",
+      "url": "https://www.cicphoto.com/cn/view14396034",
+      "publisher": "???? / ??????",
+      "publishedAt": "2025-04-07",
+      "quote": "??????3.2???",
+      "retrievedAt": "2026-07-07",
+      "verification": "Page text includes April 2025 Tianzifang single-day peak statement."
+    },
+    "notes": "Reported April 2025 recovery peak; keep as period peak anchor."
+  },
+  {
+    "id": "shanghai-gov-ja-2025-mayday-tianzifang-daily-gt-40000",
+    "observedAt": "2025-05-01",
+    "metric": "reported_peak_daily_visitors",
+    "granularity": "period",
+    "valueNum": 40000,
+    "unit": "person-visits/day",
+    "quality": "reported",
+    "confidence": 0.72,
+    "comparator": "gte",
+    "source": {
+      "sourceId": "reported_crowd_shanghai_gov",
+      "sourceType": "government_report",
+      "displayName": "Shanghai Government reported Tianzifang crowd anchors",
+      "reliability": 0.78,
+      "cadence": "ad hoc",
+      "notes": "Government portal article; period statement, not machine telemetry."
+    },
+    "period": {
+      "start": "2025-05-01",
+      "end": "2025-05-05",
+      "precision": "May Day holiday period"
+    },
+    "provenance": {
+      "title": "?????????????? ??????????????????????????",
+      "url": "https://japanese.shanghai.gov.cn/ja-EditorsPick-ShopinShanghai/20250508/5e4c808d784645c39d48a33c0b6698eb.html",
+      "publisher": "Shanghai Municipal Government Japanese portal",
+      "publishedAt": "2025-05-08",
+      "quote": "1???????????4?????",
+      "retrievedAt": "2026-07-07",
+      "verification": "Fetched page HTML directly and matched title plus visitor sentence."
+    },
+    "notes": "Historical holiday peak anchor only, not a continuous daily time series."
+  },
+  {
+    "id": "wrsa-chinanews-2025-aug-inbound-tourism-context",
+    "observedAt": "2025-08-18",
+    "metric": "context_signal",
+    "granularity": "period",
+    "valueText": "Inbound tourism and visa-free policy cited as drivers of Tianzifang recovery",
+    "quality": "reported",
+    "confidence": 0.66,
+    "comparator": "eq",
+    "source": {
+      "sourceId": "reported_context_chinanews_wrsa",
+      "sourceType": "interview_report",
+      "displayName": "China News / WRSA Tianzifang context anchors",
+      "reliability": 0.68,
+      "cadence": "ad hoc",
+      "notes": "Contextual driver statements, not direct telemetry."
+    },
+    "period": {
+      "start": "2025-01-01",
+      "end": "2025-08-18",
+      "precision": "2025 spring-summer context"
+    },
+    "provenance": {
+      "title": "?????????????????????????",
+      "url": "https://www.wrsa.net/1000568/2025/08-19/content_42546616.htm",
+      "publisher": "????? / ?????",
+      "publishedAt": "2025-08-19",
+      "quote": "????3.2???????????????",
+      "retrievedAt": "2026-07-07",
+      "verification": "Page text links 2025 spring-summer peak with inbound visitor context."
+    },
+    "notes": "Context signal for model interpretation; duplicate numeric peak remains in the CICPhoto crowd anchor."
+  },
+  {
+    "id": "huangpu-media-2025-national-day-tianzifang-total-13000",
+    "observedAt": "2025-10-01",
+    "metric": "reported_daily_visitors",
+    "granularity": "day",
+    "valueNum": 13000,
+    "unit": "person-visits/day",
+    "quality": "reported",
+    "confidence": 0.7,
+    "comparator": "eq",
+    "source": {
+      "sourceId": "reported_crowd_huangpu_media",
+      "sourceType": "government_repost",
+      "displayName": "Huangpu official/media reported Tianzifang crowd anchors",
+      "reliability": 0.72,
+      "cadence": "ad hoc",
+      "notes": "Reported by Huangpu-linked or city media channels; keep provenance per anchor."
+    },
+    "period": {
+      "start": "2025-10-01",
+      "end": "2025-10-01",
+      "precision": "reported day"
+    },
+    "provenance": {
+      "title": "?????????????????????????????????????",
+      "url": "https://view.inews.qq.com/a/20251002A05E0H00",
+      "publisher": "??????????? / ????",
+      "publishedAt": "2025-10-02",
+      "quote": "???????0.4???????1.3???",
+      "retrievedAt": "2026-07-07",
+      "verification": "Search result snippet exposes both Tianzifang peak and cumulative figures."
+    },
+    "notes": "Reported National Day daily total."
+  },
+  {
+    "id": "huangpu-media-2025-national-day-tianzifang-instant-4000",
+    "observedAt": "2025-10-01T19:03:00+08:00",
+    "metric": "reported_instant_visitors",
+    "granularity": "instant",
+    "valueNum": 4000,
+    "unit": "people",
+    "quality": "reported",
+    "confidence": 0.67,
+    "comparator": "approx",
+    "source": {
+      "sourceId": "reported_crowd_huangpu_media",
+      "sourceType": "government_repost",
+      "displayName": "Huangpu official/media reported Tianzifang crowd anchors",
+      "reliability": 0.72,
+      "cadence": "ad hoc",
+      "notes": "Reported by Huangpu-linked or city media channels; keep provenance per anchor."
+    },
+    "period": {
+      "start": "2025-10-01",
+      "end": "2025-10-01",
+      "precision": "reported instant peak; exact minute inferred from article context"
+    },
+    "provenance": {
+      "title": "?????????????????????????????????????",
+      "url": "https://view.inews.qq.com/a/20251002A05E0H00",
+      "publisher": "??????????? / ????",
+      "publishedAt": "2025-10-02",
+      "quote": "???????0.4??",
+      "retrievedAt": "2026-07-07",
+      "verification": "Search result snippet gives Tianzifang instantaneous peak."
+    },
+    "notes": "Instant peak anchor, not a daily total."
+  },
+  {
+    "id": "jfdaily-2026-new-year-tianzifang-instant-3181",
+    "observedAt": "2026-01-01T17:00:00+08:00",
+    "metric": "reported_instant_visitors",
+    "granularity": "instant",
+    "valueNum": 3181,
+    "unit": "people",
+    "quality": "reported",
+    "confidence": 0.68,
+    "comparator": "eq",
+    "source": {
+      "sourceId": "reported_crowd_jfdaily",
+      "sourceType": "media_report",
+      "displayName": "Jiefang Daily reported Tianzifang crowd anchors",
+      "reliability": 0.68,
+      "cadence": "ad hoc",
+      "notes": "City media reports with explicit crowd figures."
+    },
+    "period": {
+      "start": "2026-01-01",
+      "end": "2026-01-01",
+      "precision": "reported instant at 17:00"
+    },
+    "provenance": {
+      "title": "??????????????????????????????",
+      "url": "https://www.jfdaily.com/wx/detail.do?id=1045812",
+      "publisher": "????",
+      "publishedAt": "2026-01-02",
+      "quote": "???????3181?",
+      "retrievedAt": "2026-07-07",
+      "verification": "Page/search text lists Huangpu area instant crowd counts at 2026-01-01 17:00."
+    },
+    "notes": "Instant holiday anchor useful for calibrating occupancy samples."
+  },
+  {
+    "id": "sina-2026-qingming-tianzifang-partial-6700",
+    "observedAt": "2026-04-04T12:00:00+08:00",
+    "metric": "reported_partial_day_visitors",
+    "granularity": "instant",
+    "valueNum": 6700,
+    "unit": "person-visits-to-time",
+    "quality": "reported",
+    "confidence": 0.6,
+    "comparator": "approx",
+    "source": {
+      "sourceId": "reported_crowd_sina",
+      "sourceType": "media_report",
+      "displayName": "Sina reported Tianzifang crowd anchors",
+      "reliability": 0.63,
+      "cadence": "ad hoc",
+      "notes": "Secondary report; use with explicit quote and confidence."
+    },
+    "period": {
+      "start": "2026-04-04T00:00:00+08:00",
+      "end": "2026-04-04T12:00:00+08:00",
+      "precision": "partial day through noon"
+    },
+    "provenance": {
+      "title": "??????????????????????",
+      "url": "https://finance.sina.com.cn/jjxw/2026-04-04/doc-inhtiymv7790231.shtml",
+      "publisher": "????",
+      "publishedAt": "2026-04-04",
+      "quote": "????0.67???????17.2%",
+      "retrievedAt": "2026-07-07",
+      "verification": "Search result snippet reports Tianzifang partial-day cumulative visitors."
+    },
+    "notes": "Partial-day cumulative figure; do not compare directly with full-day totals."
+  },
+  {
+    "id": "sina-2026-qingming-tianzifang-partial-9000",
+    "observedAt": "2026-04-05T15:00:00+08:00",
+    "metric": "reported_partial_day_visitors",
+    "granularity": "instant",
+    "valueNum": 9000,
+    "unit": "person-visits-to-time",
+    "quality": "reported",
+    "confidence": 0.62,
+    "comparator": "eq",
+    "source": {
+      "sourceId": "reported_crowd_sina",
+      "sourceType": "media_report",
+      "displayName": "Sina reported Tianzifang crowd anchors",
+      "reliability": 0.63,
+      "cadence": "ad hoc",
+      "notes": "Secondary report; use with explicit quote and confidence."
+    },
+    "period": {
+      "start": "2026-04-05T00:00:00+08:00",
+      "end": "2026-04-05T15:00:00+08:00",
+      "precision": "partial day through 15:00"
+    },
+    "provenance": {
+      "title": "???????????????????????????",
+      "url": "https://finance.sina.cn/2026-04-05/detail-inhtmxar8307488.d.html",
+      "publisher": "???? / ????",
+      "publishedAt": "2026-04-05",
+      "quote": "???????0.9???",
+      "retrievedAt": "2026-07-07",
+      "verification": "Search result and page snippet report the 15:00 cumulative visitor count."
+    },
+    "notes": "Partial-day cumulative figure; do not compare directly with full-day totals."
+  },
+  {
+    "id": "bjnews-2026-mayday-tianzifang-total-16000",
+    "observedAt": "2026-05-01",
+    "metric": "reported_daily_visitors",
+    "granularity": "day",
+    "valueNum": 16000,
+    "unit": "person-visits/day",
+    "quality": "reported",
+    "confidence": 0.68,
+    "comparator": "eq",
+    "source": {
+      "sourceId": "reported_crowd_bjnews",
+      "sourceType": "media_report",
+      "displayName": "Beijing News reported Tianzifang crowd anchors",
+      "reliability": 0.66,
+      "cadence": "ad hoc",
+      "notes": "Secondary report quoting Shanghai Huangpu police figures."
+    },
+    "period": {
+      "start": "2026-05-01",
+      "end": "2026-05-01",
+      "precision": "reported day"
+    },
+    "provenance": {
+      "title": "???????????????????????????????",
+      "url": "https://m.bjnews.com.cn/detail/1777686747129608.html",
+      "publisher": "???",
+      "publishedAt": "2026-05-02",
+      "quote": "???????1.6????????32%",
+      "retrievedAt": "2026-07-07",
+      "verification": "Page/search text quotes Shanghai Huangpu police May Day visitor count."
+    },
+    "notes": "Full-day cumulative reported by media quoting Huangpu police figures."
+  }
+]

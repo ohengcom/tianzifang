@@ -4,9 +4,12 @@ import { collectAmapWeather } from '../collectors/amap_weather.js';
 import { closeDb, getDb, initDb } from '../config/db.js';
 import { shanghaiDate } from '../utils/time.js';
 import { deriveDailyFeatures } from '../v2/daily-features.js';
+import { importHistoricalCrowdAnchors, readHistoricalCrowdAnchors } from '../v2/historical-crowd-anchors.js';
+import { generateHtmlReport } from '../v2/html-report.js';
 import { finishRun, startRun } from '../v2/observation-store.js';
 
-const USAGE = 'node analysis/v2.js [init|collect-amap-weather|derive START END|summary]';
+const USAGE =
+  'node analysis/v2.js [init|collect-amap-weather|import-crowd-anchors FILE|report-html OUTPUT|derive START END|summary]';
 
 async function summary() {
   const db = await getDb();
@@ -26,6 +29,9 @@ async function summary() {
       sample_count,
       ROUND(avg_in_park::numeric, 1) AS avg_in_park,
       max_in_park,
+      reported_visitors,
+      activity_event_count,
+      context_signal_count,
       coverage_minutes,
       ROUND(quality_score::numeric, 3) AS quality_score
     FROM daily_features
@@ -34,7 +40,9 @@ async function summary() {
   `);
   if (features[0]?.values?.length) {
     console.log('\nRecent daily features:');
-    console.log('date | samples | avg_in_park | max_in_park | coverage_minutes | quality_score');
+    console.log(
+      'date | samples | avg_in_park | max_in_park | reported_visitors | activity_events | context_signals | coverage_minutes | quality_score',
+    );
     for (const row of features[0].values) console.log(row.join(' | '));
   }
 }
@@ -68,6 +76,31 @@ export async function main() {
       const endDate = endArg || shanghaiDate(0);
       const results = await deriveDailyFeatures(db, { startDate, endDate });
       console.log(`derived daily_features: ${results.length}`);
+      break;
+    }
+    case 'import-crowd-anchors': {
+      const file = startArg || 'data/historical_crowd_anchors.json';
+      const anchors = await readHistoricalCrowdAnchors(file);
+      const runId = await startRun(db, {
+        sourceId: 'reported_crowd',
+        collector: 'historical_crowd_anchors',
+        rawContext: { file, count: anchors.length },
+      });
+      try {
+        const count = await importHistoricalCrowdAnchors(db, anchors, { runId });
+        await finishRun(db, runId, { status: 'ok', recordsInserted: count });
+        console.log(`imported historical crowd anchors: ${count}`);
+      } catch (error) {
+        await finishRun(db, runId, { status: 'error', errorMessage: error.message });
+        throw error;
+      }
+      break;
+    }
+    case 'report-html': {
+      const outputPath = startArg || 'reports/tianzifang-crowd-report.html';
+      const result = await generateHtmlReport(db, { outputPath });
+      console.log(`generated HTML report: ${result.outputPath}`);
+      console.log(`report rows: daily=${result.dailyRows}, anchors=${result.anchors}`);
       break;
     }
     case 'summary':

@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tianzifang Crowd Analysis Report</title>
+  <style>
+    .tzf-report { color: #17202a; font: 14px/1.55 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .tzf-report h1, .tzf-report h2 { line-height: 1.2; margin: 0 0 12px; }
+    .tzf-report h1 { font-size: 26px; }
+    .tzf-report h2 { font-size: 18px; margin-top: 26px; }
+    .tzf-report .meta { color: #5d6d7e; margin-bottom: 18px; }
+    .tzf-report .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin: 16px 0; }
+    .tzf-report .tile { border: 1px solid #d7dde4; border-radius: 6px; padding: 12px; background: #fff; }
+    .tzf-report .tile b { display: block; font-size: 20px; margin-top: 4px; }
+    .tzf-report table { border-collapse: collapse; width: 100%; margin: 10px 0 18px; }
+    .tzf-report th, .tzf-report td { border: 1px solid #d7dde4; padding: 8px; text-align: left; vertical-align: top; }
+    .tzf-report th { background: #f3f6f8; font-weight: 650; }
+    .tzf-report a { color: #0b63ce; }
+  </style>
+</head>
+<body>
+<section class="tzf-report">
+  <h1>Tianzifang Crowd Analysis Report</h1>
+  <div class="meta">Generated at 2026-07-07T07:10:16.642Z. Data source: Neon v2 observations / daily_features.</div>
+  <div class="grid">
+    <div class="tile">Recent feature days <b>66</b></div>
+    <div class="tile">Peak in-park count <b>12,600 (2026-05-16)</b></div>
+    <div class="tile">Top reported daily visitors <b></b></div>
+    <div class="tile">Historical/event anchors <b>11</b></div>
+  </div>
+
+  <h2>Factor Model</h2>
+  <p>The analysis keeps instant in-park occupancy, reported cumulative visitors, holidays, hourly/district weather, activity events, nearby transport and traffic context, venue/area control signals, school and office calendars, exhibitions and neighborhood events, inbound-tourism policy context, search/social media attention, and data-quality coverage separate. Reported anchors explain and calibrate the series; they are not summed from instant occupancy samples.</p>
+  <table>
+    <thead><tr><th>Factor</th><th>Count</th></tr></thead>
+    <tbody><tr><td>Daily feature rows</td><td><strong>66</strong></td></tr>
+<tr><td>Holiday rows in report window</td><td><strong>7</strong></td></tr>
+<tr><td>Historical/event anchors</td><td><strong>11</strong></td></tr>
+<tr><td>reported_daily_visitors</td><td><strong>2</strong></td></tr>
+<tr><td>reported_partial_day_visitors</td><td><strong>2</strong></td></tr>
+<tr><td>reported_instant_visitors</td><td><strong>2</strong></td></tr>
+<tr><td>context_signal</td><td><strong>1</strong></td></tr>
+<tr><td>reported_peak_daily_visitors</td><td><strong>3</strong></td></tr>
+<tr><td>activity_event</td><td><strong>1</strong></td></tr></tbody>
+  </table>
+
+  <h2>Recent Daily Features</h2>
+  <table>
+    <thead><tr><th>Date</th><th>Samples</th><th>Avg in park</th><th>Max in park</th><th>Reported visitors</th><th>Activities</th><th>Context</th><th>Temp</th><th>Holiday</th><th>Quality</th></tr></thead>
+    <tbody><tr><td>2026-07-07</td><td>81</td><td>312.2</td><td>592</td><td></td><td>0</td><td>0</td><td>28-35 C</td><td></td><td>0.668</td></tr>
+<tr><td>2026-07-06</td><td>122</td><td>749.6</td><td>1,423</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.856</td></tr>
+<tr><td>2026-07-05</td><td>109</td><td>610.9</td><td>1,051</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.803</td></tr>
+<tr><td>2026-07-04</td><td>113</td><td>508.7</td><td>1,022</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.807</td></tr>
+<tr><td>2026-07-03</td><td>110</td><td>650.9</td><td>1,053</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.803</td></tr>
+<tr><td>2026-07-02</td><td>102</td><td>479.7</td><td>886</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.762</td></tr>
+<tr><td>2026-07-01</td><td>123</td><td>959.5</td><td>1,287</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.856</td></tr>
+<tr><td>2026-06-30</td><td>124</td><td>851.5</td><td>1,309</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.856</td></tr>
+<tr><td>2026-06-29</td><td>110</td><td>781.7</td><td>1,211</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.803</td></tr>
+<tr><td>2026-06-28</td><td>114</td><td>878.6</td><td>1,456</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.812</td></tr>
+<tr><td>2026-06-27</td><td>113</td><td>942.1</td><td>1,569</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.812</td></tr>
+<tr><td>2026-06-26</td><td>101</td><td>663.7</td><td>1,127</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.758</td></tr>
+<tr><td>2026-06-25</td><td>97</td><td>484.6</td><td>772</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.758</td></tr>
+<tr><td>2026-06-24</td><td>111</td><td>581.8</td><td>845</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.794</td></tr>
+<tr><td>2026-06-23</td><td>110</td><td>358.1</td><td>498</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.794</td></tr>
+<tr><td>2026-06-22</td><td>111</td><td>398.5</td><td>602</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.803</td></tr>
+<tr><td>2026-06-21</td><td>108</td><td>713.6</td><td>1,187</td><td></td><td>0</td><td>0</td><td></td><td>holiday</td><td>0.794</td></tr>
+<tr><td>2026-06-20</td><td>102</td><td>839.9</td><td>1,295</td><td></td><td>0</td><td>0</td><td></td><td>holiday</td><td>0.753</td></tr>
+<tr><td>2026-06-19</td><td>104</td><td>693.6</td><td>1,229</td><td></td><td>0</td><td>0</td><td></td><td>holiday</td><td>0.776</td></tr>
+<tr><td>2026-06-18</td><td>104</td><td>747.6</td><td>1,201</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.776</td></tr>
+<tr><td>2026-06-17</td><td>106</td><td>452.1</td><td>780</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.776</td></tr>
+<tr><td>2026-06-16</td><td>108</td><td>269</td><td>455</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.78</td></tr>
+<tr><td>2026-06-15</td><td>109</td><td>424.1</td><td>633</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.785</td></tr>
+<tr><td>2026-06-14</td><td>117</td><td>564.6</td><td>856</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.825</td></tr>
+<tr><td>2026-06-13</td><td>103</td><td>685.9</td><td>1,065</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.785</td></tr>
+<tr><td>2026-06-12</td><td>110</td><td>670.1</td><td>975</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.794</td></tr>
+<tr><td>2026-06-11</td><td>105</td><td>894.7</td><td>1,591</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.771</td></tr>
+<tr><td>2026-06-10</td><td>106</td><td>536.2</td><td>890</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.776</td></tr>
+<tr><td>2026-06-09</td><td>108</td><td>571.6</td><td>821</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.776</td></tr>
+<tr><td>2026-06-08</td><td>112</td><td>536.5</td><td>842</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.803</td></tr>
+<tr><td>2026-06-07</td><td>114</td><td>993.5</td><td>1,594</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.812</td></tr>
+<tr><td>2026-06-06</td><td>111</td><td>821.7</td><td>1,214</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.803</td></tr>
+<tr><td>2026-06-05</td><td>107</td><td>665</td><td>1,043</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.803</td></tr>
+<tr><td>2026-06-04</td><td>108</td><td>905.6</td><td>1,596</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.789</td></tr>
+<tr><td>2026-06-03</td><td>99</td><td>474.3</td><td>666</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.749</td></tr>
+<tr><td>2026-06-01</td><td>40</td><td>907.3</td><td>1,456</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.488</td></tr>
+<tr><td>2026-05-31</td><td>111</td><td>1,198.9</td><td>1,969</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.798</td></tr>
+<tr><td>2026-05-30</td><td>111</td><td>1,253.5</td><td>2,046</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.794</td></tr>
+<tr><td>2026-05-29</td><td>117</td><td>873.1</td><td>1,330</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.838</td></tr>
+<tr><td>2026-05-28</td><td>117</td><td>585.1</td><td>923</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.825</td></tr>
+<tr><td>2026-05-27</td><td>119</td><td>752.4</td><td>1,132</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.807</td></tr>
+<tr><td>2026-05-26</td><td>142</td><td>766.3</td><td>1,119</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.83</td></tr>
+<tr><td>2026-05-25</td><td>183</td><td>1,180.5</td><td>3,120</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.967</td></tr>
+<tr><td>2026-05-24</td><td>177</td><td>1,271.9</td><td>6,300</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.971</td></tr>
+<tr><td>2026-05-23</td><td>174</td><td>1,234</td><td>10,500</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.959</td></tr>
+<tr><td>2026-05-22</td><td>183</td><td>929.9</td><td>3,120</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.961</td></tr>
+<tr><td>2026-05-21</td><td>183</td><td>1,084.7</td><td>7,800</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.97</td></tr>
+<tr><td>2026-05-20</td><td>179</td><td>839.5</td><td>3,120</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.961</td></tr>
+<tr><td>2026-05-19</td><td>183</td><td>1,246.6</td><td>7,800</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.962</td></tr>
+<tr><td>2026-05-18</td><td>163</td><td>1,070.2</td><td>7,800</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.888</td></tr>
+<tr><td>2026-05-17</td><td>162</td><td>1,322.7</td><td>11,760</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.885</td></tr>
+<tr><td>2026-05-16</td><td>185</td><td>1,562.5</td><td>12,600</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.956</td></tr>
+<tr><td>2026-05-15</td><td>138</td><td>1,125</td><td>3,120</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.949</td></tr>
+<tr><td>2026-05-14</td><td>33</td><td>736.5</td><td>3,120</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.809</td></tr>
+<tr><td>2026-05-13</td><td>33</td><td>770</td><td>3,120</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.684</td></tr>
+<tr><td>2026-05-12</td><td>43</td><td>775.1</td><td>3,120</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.821</td></tr>
+<tr><td>2026-05-11</td><td>33</td><td>1,008.6</td><td>3,120</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.746</td></tr>
+<tr><td>2026-05-10</td><td>33</td><td>777.6</td><td>4,200</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.621</td></tr>
+<tr><td>2026-05-09</td><td>33</td><td>752.2</td><td>4,200</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.693</td></tr>
+<tr><td>2026-05-08</td><td>33</td><td>466.8</td><td>3,120</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.764</td></tr>
+<tr><td>2026-05-07</td><td>33</td><td>765.3</td><td>3,120</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.693</td></tr>
+<tr><td>2026-05-06</td><td>33</td><td>761.3</td><td>3,120</td><td></td><td>0</td><td>0</td><td></td><td></td><td>0.666</td></tr>
+<tr><td>2026-05-05</td><td>33</td><td>830.8</td><td>3,120</td><td></td><td>0</td><td>0</td><td></td><td>holiday</td><td>0.63</td></tr>
+<tr><td>2026-05-04</td><td>29</td><td>1,313</td><td>3,120</td><td></td><td>0</td><td>0</td><td></td><td>holiday</td><td>0.741</td></tr>
+<tr><td>2026-05-03</td><td>33</td><td>1,146</td><td>4,200</td><td></td><td>0</td><td>0</td><td></td><td>holiday</td><td>0.738</td></tr>
+<tr><td>2026-05-02</td><td>22</td><td>2,357.4</td><td>12,600</td><td></td><td>0</td><td>0</td><td></td><td>holiday</td><td>0.447</td></tr></tbody>
+  </table>
+
+  <h2>Historical And Event Anchors</h2>
+  <table>
+    <thead><tr><th>Date</th><th>Metric</th><th>Granularity</th><th>Value</th><th>Confidence</th><th>Source</th></tr></thead>
+    <tbody><tr><td>2026-04-30</td><td>reported_daily_visitors</td><td>day</td><td>16,000 person-visits/day</td><td>0.68</td><td><a href="https://m.bjnews.com.cn/detail/1777686747129608.html">???????????????????????????????</a></td></tr>
+<tr><td>2026-04-05</td><td>reported_partial_day_visitors</td><td>instant</td><td>9,000 person-visits-to-time</td><td>0.62</td><td><a href="https://finance.sina.cn/2026-04-05/detail-inhtmxar8307488.d.html">???????????????????????????</a></td></tr>
+<tr><td>2026-04-04</td><td>reported_partial_day_visitors</td><td>instant</td><td>6,700 person-visits-to-time</td><td>0.6</td><td><a href="https://finance.sina.com.cn/jjxw/2026-04-04/doc-inhtiymv7790231.shtml">??????????????????????</a></td></tr>
+<tr><td>2026-01-01</td><td>reported_instant_visitors</td><td>instant</td><td>3,181 people</td><td>0.68</td><td><a href="https://www.jfdaily.com/wx/detail.do?id=1045812">??????????????????????????????</a></td></tr>
+<tr><td>2025-10-01</td><td>reported_instant_visitors</td><td>instant</td><td>4,000 people</td><td>0.67</td><td><a href="https://view.inews.qq.com/a/20251002A05E0H00">?????????????????????????????????????</a></td></tr>
+<tr><td>2025-09-30</td><td>reported_daily_visitors</td><td>day</td><td>13,000 person-visits/day</td><td>0.7</td><td><a href="https://view.inews.qq.com/a/20251002A05E0H00">?????????????????????????????????????</a></td></tr>
+<tr><td>2025-08-17</td><td>context_signal</td><td>period</td><td>Inbound tourism and visa-free policy cited as drivers of Tianzifang recovery</td><td>0.66</td><td><a href="https://www.wrsa.net/1000568/2025/08-19/content_42546616.htm">?????????????????????????</a></td></tr>
+<tr><td>2025-04-30</td><td>reported_peak_daily_visitors</td><td>period</td><td>40,000 person-visits/day</td><td>0.72</td><td><a href="https://japanese.shanghai.gov.cn/ja-EditorsPick-ShopinShanghai/20250508/5e4c808d784645c39d48a33c0b6698eb.html">?????????????? ??????????????????????????</a></td></tr>
+<tr><td>2025-04-06</td><td>reported_peak_daily_visitors</td><td>period</td><td>32,000 person-visits/day</td><td>0.72</td><td><a href="https://www.cicphoto.com/cn/view14396034">??????? ?????????????????</a></td></tr>
+<tr><td>2024-08-01</td><td>reported_peak_daily_visitors</td><td>period</td><td>20,000 person-visits</td><td>0.55</td><td><a href="https://finance.sina.cn/2024-08-02/detail-inchfezi7281188.d.html">144??????????????????????????</a></td></tr>
+<tr><td>2024-04-30</td><td>activity_event</td><td>period</td><td>May Day holiday large-crowd volunteer service at Tianzifang</td><td>0.6</td><td><a href="https://www.volunteer.sh.cn/zyzxw/2024/05/07/98c7d64e-27e7-45ac-8d28-73b527fff714.shtml">?????????????????????</a></td></tr></tbody>
+  </table>
+</section>
+</body>
+</html>

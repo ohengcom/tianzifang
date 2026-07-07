@@ -61,6 +61,87 @@ async function loadHolidayFeature(db, date, metric) {
   return rows[0]?.values?.[0]?.[0] ?? null;
 }
 
+async function loadReportedVisitors(db, date) {
+  const rows = await db.exec(
+    `
+      SELECT value_num, source_id, confidence
+      FROM observations
+      WHERE entity_id = 'tianzifang'
+        AND metric IN ('daily_total_visitors', 'reported_daily_visitors')
+        AND granularity = 'day'
+        AND observed_at = $1::timestamptz
+        AND value_num IS NOT NULL
+      ORDER BY
+        CASE metric
+          WHEN 'daily_total_visitors' THEN 0
+          ELSE 1
+        END,
+        confidence DESC
+      LIMIT 1
+    `,
+    [`${date}T00:00:00+08:00`],
+  );
+  const row = rows[0]?.values?.[0];
+  if (!row) return { visitors: null, source: null, confidence: null };
+  return { visitors: row[0], source: row[1], confidence: row[2] };
+}
+
+function shanghaiDateOnly(value) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date(value));
+  const byType = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${byType.year}-${byType.month}-${byType.day}`;
+}
+
+function dateOnly(value) {
+  if (!value) return null;
+  return String(value).slice(0, 10);
+}
+
+function anchorActiveOnDate(anchor, date) {
+  const raw = anchor.raw || {};
+  const period = raw.period || {};
+  const start = dateOnly(period.start) || anchor.date;
+  const end = dateOnly(period.end) || start;
+  return start <= date && date <= end;
+}
+
+async function loadContextAnchors(db, date) {
+  const rows = await db.exec(
+    `
+      SELECT observed_at, metric, value_num, value_text, source_id, confidence, raw
+      FROM observations
+      WHERE entity_id = 'tianzifang'
+        AND metric IN (
+          'activity_event',
+          'context_signal',
+          'reported_peak_daily_visitors',
+          'reported_instant_visitors',
+          'reported_partial_day_visitors'
+        )
+        AND observed_at >= ($1::date - interval '730 days')
+        AND observed_at < ($1::date + interval '730 days')
+      ORDER BY confidence DESC, observed_at
+    `,
+    [date],
+  );
+  return (rows[0]?.values || [])
+    .map(([observedAt, metric, valueNum, valueText, sourceId, confidence, raw]) => ({
+      date: shanghaiDateOnly(observedAt),
+      metric,
+      valueNum,
+      valueText,
+      sourceId,
+      confidence: Number(confidence),
+      raw,
+    }))
+    .filter((anchor) => anchorActiveOnDate(anchor, date));
+}
+
 export async function deriveDailyFeature(db, date) {
   const rows = await db.exec(
     `
@@ -97,6 +178,17 @@ export async function deriveDailyFeature(db, date) {
   const estimatedVisitsMid = occupancyPersonHours ? occupancyPersonHours / 1.5 : null;
   const estimatedVisitsLow = occupancyPersonHours ? occupancyPersonHours / 2.0 : null;
   const estimatedVisitsHigh = occupancyPersonHours ? occupancyPersonHours / 1.0 : null;
+  const reportedVisitors = await loadReportedVisitors(db, date);
+  const contextAnchors = await loadContextAnchors(db, date);
+  const activityEventCount = contextAnchors.filter((anchor) => anchor.metric === 'activity_event').length;
+  const contextSignalCount = contextAnchors.length - activityEventCount;
+  const strongestContextConfidence = contextAnchors.length
+    ? Math.max(...contextAnchors.map((anchor) => anchor.confidence))
+    : null;
+  const contextNotes = contextAnchors
+    .slice(0, 5)
+    .map((anchor) => `${anchor.metric}:${anchor.raw?.anchor_id || anchor.sourceId}`)
+    .join(';');
 
   await db.run(
     `
@@ -104,10 +196,12 @@ export async function deriveDailyFeature(db, date) {
         date, entity_id, sample_count, measured_count, first_sample_at, last_sample_at,
         min_in_park, avg_in_park, p50_in_park, p95_in_park, max_in_park, peak_hour,
         coverage_minutes, occupancy_person_hours, estimated_visits_low, estimated_visits_mid, estimated_visits_high,
+        reported_visitors, reported_visitors_source, reported_visitors_confidence,
+        activity_event_count, context_signal_count, strongest_context_confidence,
         weather_temp_max, weather_temp_min, weather_precipitation_mm, weather_code,
         is_holiday, is_workday, weekday, quality_score, notes, computed_at
       )
-      VALUES ($1, 'tianzifang', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, NOW())
+      VALUES ($1, 'tianzifang', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, NOW())
       ON CONFLICT (date) DO UPDATE SET
         sample_count = EXCLUDED.sample_count,
         measured_count = EXCLUDED.measured_count,
@@ -124,6 +218,12 @@ export async function deriveDailyFeature(db, date) {
         estimated_visits_low = EXCLUDED.estimated_visits_low,
         estimated_visits_mid = EXCLUDED.estimated_visits_mid,
         estimated_visits_high = EXCLUDED.estimated_visits_high,
+        reported_visitors = EXCLUDED.reported_visitors,
+        reported_visitors_source = EXCLUDED.reported_visitors_source,
+        reported_visitors_confidence = EXCLUDED.reported_visitors_confidence,
+        activity_event_count = EXCLUDED.activity_event_count,
+        context_signal_count = EXCLUDED.context_signal_count,
+        strongest_context_confidence = EXCLUDED.strongest_context_confidence,
         weather_temp_max = EXCLUDED.weather_temp_max,
         weather_temp_min = EXCLUDED.weather_temp_min,
         weather_precipitation_mm = EXCLUDED.weather_precipitation_mm,
@@ -152,6 +252,12 @@ export async function deriveDailyFeature(db, date) {
       estimatedVisitsLow,
       estimatedVisitsMid,
       estimatedVisitsHigh,
+      reportedVisitors.visitors,
+      reportedVisitors.source,
+      reportedVisitors.confidence,
+      activityEventCount,
+      contextSignalCount,
+      strongestContextConfidence,
       weatherTempMax,
       weatherTempMin,
       weatherPrecipitation,
@@ -160,7 +266,12 @@ export async function deriveDailyFeature(db, date) {
       isWorkday,
       weekday,
       qualityScore,
-      'estimated_visits use dwell-time assumptions: low=2h, mid=1.5h, high=1h; not a turnstile count',
+      [
+        'estimated_visits use dwell-time assumptions: low=2h, mid=1.5h, high=1h; not a turnstile count',
+        contextNotes ? `context_anchors=${contextNotes}` : null,
+      ]
+        .filter(Boolean)
+        .join(' | '),
     ],
   );
   return { date, sampleCount: samples.length, coverageMinutes, qualityScore };

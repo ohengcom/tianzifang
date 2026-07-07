@@ -2,7 +2,7 @@
 
 This document describes the v2 redesign for the Tianzifang crowd data project. The upgrade is additive: it keeps the legacy `crowd_data` and `daily_summary` tables, then adds a normalized observation layer and derived feature tables on Neon.
 
-Current release: `1.4.0`
+Current release: `1.4.2`
 
 ## Goals
 
@@ -46,8 +46,8 @@ flowchart LR
 
 - `data_sources`: source registry with reliability, cadence, notes, and active state.
 - `collection_runs`: execution log for collector runs and backfills.
-- `observations`: normalized fact table for all metrics.
-- `daily_features`: derived per-day analytical features.
+- `observations`: normalized fact table for all metrics, including `period` anchors for reported historical crowd claims.
+- `daily_features`: derived per-day analytical features, with optional `reported_visitors*` fields for true day-level visitor counts.
 
 The `sync_crowd_data_to_observations` trigger mirrors future legacy writes into `observations`. Historical legacy rows are backfilled during `npm run v2:init`.
 
@@ -62,12 +62,15 @@ v2 daily features use:
 - `coverage_minutes`: valid integration coverage, ignoring gaps over 30 minutes.
 - `occupancy_person_hours`: trapezoidal integration of in-park occupancy over time.
 - `estimated_visits_low/mid/high`: dwell-time model only, using 2h, 1.5h, and 1h assumptions.
+- `reported_visitors`, `reported_visitors_source`, `reported_visitors_confidence`: populated only from true day-level reported visitor counts.
+- `activity_event_count`, `context_signal_count`, `strongest_context_confidence`: activity, policy, media, mobility, operations, and other demand-context anchors active on that date.
 - `quality_score`: coverage and measured-sample based confidence for the day.
 
 ## Historical Sources
 
 ### Implemented
 
+- Reported historical crowd and activity/context anchors with provenance via `npm run v2:import-crowd-anchors`. See [`HISTORICAL_CROWD_SOURCES.md`](HISTORICAL_CROWD_SOURCES.md).
 - AMap Weather API for Huangpu District current and forecast weather:
   - `weather_temp_max`
   - `weather_temp_min`
@@ -79,8 +82,10 @@ AMap is useful for Tianzifang's district-level weather context because Tianzifan
 ### Candidate Next Sources
 
 - Official Shanghai scenic spot data archives if a documented endpoint or downloadable archive becomes available.
-- Manual import of known historical crowd observations with explicit source and quality labels.
+- More manually verified historical crowd anchors, but only with source URL, quote, confidence, and period semantics.
 - AMap contextual data for nearby POI, transit, or traffic indicators. Treat this as context, not ground-truth visitation.
+- Public or licensed mobility/attention indexes: metro station load, road traffic, map popularity, search interest, short-video visibility, and travel-guide mentions.
+- Local operations and neighborhood demand calendars: closures, entrance controls, construction, exhibitions, festivals, school breaks, office/workday cycles, hotel/tour-group recovery, and promotion periods.
 - Public holiday and adjusted workday calendars for future years, preferably generated from a maintained source instead of hard-coded year tables.
 
 ## Commands
@@ -95,6 +100,18 @@ Collect current and forecast district weather:
 
 ```bash
 npm run v2:collect:amap-weather
+```
+
+Import verified historical crowd anchors:
+
+```bash
+npm run v2:import-crowd-anchors
+```
+
+Generate a blog-ready HTML report:
+
+```bash
+npm run v2:report-html
 ```
 
 Derive daily analytical features:
@@ -119,12 +136,18 @@ npm run v2:summary
 - Add daily feature derivation based on occupancy statistics and person-hours.
 - Add v2 CLI scripts and documentation.
 
+### P2 - Completed in v1.4.2
+
+- Add an import path for manually curated historical observations with source, confidence, quote, URL, and period notes.
+- Expand the historical/event anchor set to 11 entries covering 2024-2026 reported visitor counts, partial-day figures, instant peaks, activities, and policy/media context.
+- Keep period claims separate from daily visitor totals so reported holiday peaks do not pollute daily telemetry.
+- Add `activity_event_count`, `context_signal_count`, and an HTML report generator for blog embedding.
+
 ### P2 - Next
 
 - Move the N8N workflow to write validated values only, especially for weather fields that currently can become zero when parsing fails.
 - Add alerting for stale `gov_tour` samples, zero-like weather parse failures, and collector HTTP/schema errors.
 - Add tests for AMap schema validation and daily feature calculations.
-- Add an import path for manually curated historical observations with source, confidence, and notes.
 
 ### P3 - Later
 

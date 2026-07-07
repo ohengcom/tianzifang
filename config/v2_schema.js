@@ -48,6 +48,13 @@ export async function initV2Db(db) {
     )
   `);
 
+  await db.run(`ALTER TABLE observations DROP CONSTRAINT IF EXISTS observations_granularity_check`);
+  await db.run(`
+    ALTER TABLE observations
+      ADD CONSTRAINT observations_granularity_check
+      CHECK (granularity IN ('instant', 'hour', 'day', 'period'))
+  `);
+
   await db.run(`ALTER TABLE observations DROP CONSTRAINT IF EXISTS observations_legacy_crowd_data_id_key`);
   await db.run(`
     CREATE UNIQUE INDEX IF NOT EXISTS observations_identity_key
@@ -79,6 +86,12 @@ export async function initV2Db(db) {
       estimated_visits_low DOUBLE PRECISION,
       estimated_visits_mid DOUBLE PRECISION,
       estimated_visits_high DOUBLE PRECISION,
+      reported_visitors DOUBLE PRECISION,
+      reported_visitors_source TEXT,
+      reported_visitors_confidence NUMERIC(4,3),
+      activity_event_count INTEGER NOT NULL DEFAULT 0,
+      context_signal_count INTEGER NOT NULL DEFAULT 0,
+      strongest_context_confidence NUMERIC(4,3),
       weather_temp_max DOUBLE PRECISION,
       weather_temp_min DOUBLE PRECISION,
       weather_precipitation_mm DOUBLE PRECISION,
@@ -91,6 +104,12 @@ export async function initV2Db(db) {
       computed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+  await db.run(`ALTER TABLE daily_features ADD COLUMN IF NOT EXISTS reported_visitors DOUBLE PRECISION`);
+  await db.run(`ALTER TABLE daily_features ADD COLUMN IF NOT EXISTS reported_visitors_source TEXT`);
+  await db.run(`ALTER TABLE daily_features ADD COLUMN IF NOT EXISTS reported_visitors_confidence NUMERIC(4,3)`);
+  await db.run(`ALTER TABLE daily_features ADD COLUMN IF NOT EXISTS activity_event_count INTEGER NOT NULL DEFAULT 0`);
+  await db.run(`ALTER TABLE daily_features ADD COLUMN IF NOT EXISTS context_signal_count INTEGER NOT NULL DEFAULT 0`);
+  await db.run(`ALTER TABLE daily_features ADD COLUMN IF NOT EXISTS strongest_context_confidence NUMERIC(4,3)`);
   await db.run(`CREATE INDEX IF NOT EXISTS idx_daily_features_weekday_holiday ON daily_features(weekday, is_holiday)`);
   await db.run(`CREATE INDEX IF NOT EXISTS idx_daily_features_quality ON daily_features(quality_score)`);
 
@@ -107,6 +126,18 @@ export async function initV2Db(db) {
     [
       '2026-07-07-v2-observation-model',
       'Standardized sources, collection runs, observations, daily features, and legacy sync trigger',
+    ],
+  );
+
+  await db.run(
+    `
+      INSERT INTO schema_migrations(version, notes)
+      VALUES ($1, $2)
+      ON CONFLICT (version) DO UPDATE SET notes = EXCLUDED.notes, applied_at = NOW()
+    `,
+    [
+      '2026-07-07-v2-context-anchor-features',
+      'Added period/activity/context anchor support and daily context feature columns',
     ],
   );
 }
@@ -154,6 +185,22 @@ async function seedV2Sources(db) {
       'Huangpu District current and forecast weather for Tianzifang context; no historical hourly backfill',
     ],
     ['manual', 'manual', 'Manual historical observations', 0.5, 'ad hoc', 'Legacy manually-entered historical values'],
+    [
+      'reported_crowd',
+      'report',
+      'Reported historical crowd anchors',
+      0.7,
+      'ad hoc',
+      'Government or media reported visitor counts with explicit provenance; not continuous telemetry',
+    ],
+    [
+      'reported_activity',
+      'report',
+      'Reported activity and context anchors',
+      0.65,
+      'ad hoc',
+      'Events, promotions, policy shifts, and other context that can explain visitor changes',
+    ],
   ];
 
   for (const source of sources) {
@@ -218,8 +265,14 @@ async function installLegacySyncTrigger(db) {
       IF source_value = 'weather' AND metric_value IN ('temperature_max', 'temperature_min', 'weather_desc') THEN
         RETURN 'day';
       END IF;
-      IF source_value = 'manual' AND metric_value = 'daily_total_visitors' THEN
+      IF metric_value IN ('daily_total_visitors', 'reported_daily_visitors') THEN
         RETURN 'day';
+      END IF;
+      IF metric_value IN ('period_total_visitors', 'reported_peak_daily_visitors', 'activity_event', 'context_signal') THEN
+        RETURN 'period';
+      END IF;
+      IF metric_value IN ('reported_instant_visitors', 'reported_partial_day_visitors') THEN
+        RETURN 'instant';
       END IF;
       RETURN 'instant';
     END;

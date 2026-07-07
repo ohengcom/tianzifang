@@ -2,7 +2,7 @@
 
 Collects and summarizes Tianzifang crowd-related signals with a single Node.js runtime and PostgreSQL storage.
 
-Current version: `1.4.0`
+Current version: `1.4.2`
 
 ## Stack
 
@@ -31,7 +31,9 @@ npm run report:yesterday
 npm run query -- today
 npm run v2:init
 npm run v2:collect:amap-weather
+npm run v2:import-crowd-anchors
 npm run v2:derive -- 2025-10-03 2026-07-07
+npm run v2:report-html
 npm run v2:summary
 npm start          # 启动本地定时采集 (--schedule)
 ```
@@ -133,8 +135,12 @@ This project intentionally supports the Neon PostgreSQL path only. There is no l
 ## Data Semantics
 
 - `crowd_data.source='gov_tour'` + `metric='in_park_count'` is a point-in-time in-park count sample, not cumulative visitor traffic.
+- `observations.source_id` values such as `reported_crowd_shanghai_gov` store reported historical visitor anchors with provenance.
 - `daily_summary.total_visitors` is intentionally written as `NULL` until a reliable cumulative visitor source is available.
 - `daily_summary.notes` keeps `in_park_sample_sum=...` as a diagnostic value only; do not use it as total visitors.
+- Crowd analysis should consider multiple local drivers: holidays, weather, activities, policy/media context, mobility, temporary operations, nearby events, school/office calendars, and data quality.
+- See [`docs/HISTORICAL_CROWD_SOURCES.md`](docs/HISTORICAL_CROWD_SOURCES.md) for verified and candidate historical crowd sources.
+- `npm run v2:report-html` generates [`reports/tianzifang-crowd-report.html`](reports/tianzifang-crowd-report.html) for blog embedding.
 
 ## Notes
 
@@ -144,6 +150,13 @@ This project intentionally supports the Neon PostgreSQL path only. There is no l
 - Source files are UTF-8. If PowerShell displays Chinese text as mojibake, verify with a UTF-8 reader before treating the file as corrupted.
 
 ## Release Notes
+
+### 1.4.2
+
+- Expanded historical/context anchors to cover 2024-2026 Tianzifang crowd reports, partial-day figures, instant peaks, activities, and policy context.
+- Added `activity_event_count`, `context_signal_count`, and strongest context confidence to daily features.
+- Added `npm run v2:report-html` to generate a self-contained blog-embeddable HTML report.
+- Restored `.env.example` with safe placeholder values only.
 
 ### 1.4.0
 

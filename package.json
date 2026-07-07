@@ -1,6 +1,6 @@
 {
   "name": "tianzifang-crowd",
-  "version": "1.4.0",
+  "version": "1.4.2",
   "description": "Tianzifang crowd data collection and analysis",
   "type": "module",
   "dependencies": {
@@ -24,6 +24,8 @@
     "query": "node --env-file=.env analysis/query.js",
     "v2:init": "node --env-file=.env analysis/v2.js init",
     "v2:collect:amap-weather": "node --env-file=.env analysis/v2.js collect-amap-weather",
+    "v2:import-crowd-anchors": "node --env-file=.env analysis/v2.js import-crowd-anchors data/historical_crowd_anchors.json",
+    "v2:report-html": "node --env-file=.env analysis/v2.js report-html reports/tianzifang-crowd-report.html",
     "v2:derive": "node --env-file=.env analysis/v2.js derive",
     "v2:summary": "node --env-file=.env analysis/v2.js summary",
     "lint": "biome check .",
