@@ -2,7 +2,7 @@
 
 This document describes the v2 redesign for the Tianzifang crowd data project. The upgrade is additive: it keeps the legacy `crowd_data` and `daily_summary` tables, then adds a normalized observation layer and derived feature tables on Neon.
 
-Current release: `1.3.0`
+Current release: `1.4.0`
 
 ## Goals
 
@@ -10,7 +10,7 @@ Current release: `1.3.0`
 - Preserve the existing N8N workflow and legacy tables during migration.
 - Normalize all collected signals into one observation model.
 - Stop treating point-in-time `in_park_count` samples as cumulative visitor totals.
-- Add validated historical weather backfill from Open-Meteo Archive.
+- Add validated weather context from China-facing providers where available.
 - Produce daily analysis features that can support reports, forecasting, and future dashboards.
 
 ## Context7 Notes
@@ -29,7 +29,7 @@ flowchart LR
   Local["Local Node collectors"] --> Legacy
   Legacy --> Trigger["legacy sync trigger"]
   Trigger --> Obs["observations"]
-  Weather["Open-Meteo archive"] --> Obs
+  Weather["AMap weather"] --> Obs
   Obs --> Features["daily_features"]
   Features --> Reports["reports / forecasts / dashboards"]
 ```
@@ -68,11 +68,13 @@ v2 daily features use:
 
 ### Implemented
 
-- Open-Meteo Archive API for daily weather history:
+- AMap Weather API for Huangpu District current and forecast weather:
   - `weather_temp_max`
   - `weather_temp_min`
-  - `weather_precipitation_mm`
-  - `weather_code`
+  - `weather_condition_day`
+  - `weather_condition_night`
+
+AMap is useful for Tianzifang's district-level weather context because Tianzifang is in Huangpu District (`310101`). It is not a block-level coordinate weather grid and does not provide historical hourly backfill through the public weather endpoint.
 
 ### Candidate Next Sources
 
@@ -89,10 +91,10 @@ Initialize all schemas and backfill legacy rows:
 npm run v2:init
 ```
 
-Backfill historical weather:
+Collect current and forecast district weather:
 
 ```bash
-npm run v2:backfill:weather -- 2025-10-03 2026-07-07
+npm run v2:collect:amap-weather
 ```
 
 Derive daily analytical features:
@@ -113,7 +115,7 @@ npm run v2:summary
 
 - Add v2 normalized Neon schema and source registry.
 - Add legacy-to-v2 trigger and historical legacy backfill.
-- Add Open-Meteo historical weather backfill with Zod validation.
+- Add provider-validated weather collection hooks.
 - Add daily feature derivation based on occupancy statistics and person-hours.
 - Add v2 CLI scripts and documentation.
 
@@ -121,7 +123,7 @@ npm run v2:summary
 
 - Move the N8N workflow to write validated values only, especially for weather fields that currently can become zero when parsing fails.
 - Add alerting for stale `gov_tour` samples, zero-like weather parse failures, and collector HTTP/schema errors.
-- Add tests for Open-Meteo schema validation and daily feature calculations.
+- Add tests for AMap schema validation and daily feature calculations.
 - Add an import path for manually curated historical observations with source, confidence, and notes.
 
 ### P3 - Later

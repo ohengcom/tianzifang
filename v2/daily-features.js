@@ -33,9 +33,10 @@ async function loadWeatherFeature(db, date, metric) {
     `
       SELECT value_num
       FROM observations
-      WHERE source_id = 'open_meteo_archive'
+      WHERE source_id = 'amap_weather'
         AND entity_id = 'tianzifang'
         AND metric = $2
+        AND granularity = 'day'
         AND observed_at = $1::timestamptz
       LIMIT 1
     `,
@@ -87,8 +88,8 @@ export async function deriveDailyFeature(db, date) {
 
   const weatherTempMax = await loadWeatherFeature(db, date, 'weather_temp_max');
   const weatherTempMin = await loadWeatherFeature(db, date, 'weather_temp_min');
-  const weatherPrecipitation = await loadWeatherFeature(db, date, 'weather_precipitation_mm');
-  const weatherCode = await loadWeatherFeature(db, date, 'weather_code');
+  const weatherPrecipitation = null;
+  const weatherCode = null;
   const isHoliday = await loadHolidayFeature(db, date, 'is_holiday');
   const isWorkday = await loadHolidayFeature(db, date, 'is_workday');
   const weekday = await loadHolidayFeature(db, date, 'weekday');

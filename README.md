@@ -2,7 +2,7 @@
 
 Collects and summarizes Tianzifang crowd-related signals with a single Node.js runtime and PostgreSQL storage.
 
-Current version: `1.3.0`
+Current version: `1.4.0`
 
 ## Stack
 
@@ -30,7 +30,7 @@ npm run summary
 npm run report:yesterday
 npm run query -- today
 npm run v2:init
-npm run v2:backfill:weather -- 2025-10-03 2026-07-07
+npm run v2:collect:amap-weather
 npm run v2:derive -- 2025-10-03 2026-07-07
 npm run v2:summary
 npm start          # 启动本地定时采集 (--schedule)
@@ -124,6 +124,7 @@ cp .env.example .env
 This project intentionally supports the Neon PostgreSQL path only. There is no local SQLite or local PostgreSQL fallback.
 
 - `NEON_URL` is required for every command that reads or writes data.
+- `AMAP_KEY` can be set to collect Huangpu District current and forecast weather from AMap.
 - `npm run init` applies idempotent Neon schema setup, creates query indexes, and records the applied schema version in `schema_migrations`.
 - Collector HTTP failures are recorded through collector status rows; normal successful responses with no fresh scenic data write zero metric rows.
 - Holiday data is strict for configured tables, but production collection falls back to weekday/workday markers with `confidence='unavailable'` if a future year has not been configured yet.
@@ -144,11 +145,17 @@ This project intentionally supports the Neon PostgreSQL path only. There is no l
 
 ## Release Notes
 
+### 1.4.0
+
+- Added AMap weather collection for Tianzifang's Huangpu District context.
+- Replaced the previous weather backfill command with `npm run v2:collect:amap-weather`.
+- Documented that AMap is suitable for current/forecast district weather, but not historical hourly backfill.
+
 ### 1.3.0
 
 - Added the v2 normalized Neon observation model, source registry, collection run log, and daily feature table.
 - Added a legacy sync trigger so existing `crowd_data` writes flow into v2 observations.
-- Added Open-Meteo Archive historical weather backfill with Zod runtime validation.
+- Added provider-validated weather collection with Zod runtime validation.
 - Added daily feature derivation based on occupancy statistics, coverage, person-hours, and dwell-time assumptions.
 - Documented the v2 architecture, data semantics, migration commands, and next upgrade plan.
 

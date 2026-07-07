@@ -13,3 +13,4 @@ function normalizeNeonUrl(url) {
 }
 
 export const NEON_URL = normalizeNeonUrl(process.env.NEON_URL);
+export const AMAP_KEY = process.env.AMAP_KEY || process.env.AMAP_API_KEY || process.env.GAODE_KEY;

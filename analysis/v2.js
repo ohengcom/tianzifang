@@ -1,12 +1,12 @@
 ﻿#!/usr/bin/env node
 import { pathToFileURL } from 'node:url';
-import { backfillOpenMeteoDaily } from '../collectors/open_meteo_history.js';
+import { collectAmapWeather } from '../collectors/amap_weather.js';
 import { closeDb, getDb, initDb } from '../config/db.js';
 import { shanghaiDate } from '../utils/time.js';
 import { deriveDailyFeatures } from '../v2/daily-features.js';
 import { finishRun, startRun } from '../v2/observation-store.js';
 
-const USAGE = 'node analysis/v2.js [init|backfill-weather START END|derive START END|summary]';
+const USAGE = 'node analysis/v2.js [init|collect-amap-weather|derive START END|summary]';
 
 async function summary() {
   const db = await getDb();
@@ -47,18 +47,16 @@ export async function main() {
       await initDb();
       console.log('v2 schema initialized');
       break;
-    case 'backfill-weather': {
-      const startDate = startArg || '2025-10-03';
-      const endDate = endArg || shanghaiDate(0);
+    case 'collect-amap-weather': {
       const runId = await startRun(db, {
-        sourceId: 'open_meteo_archive',
-        collector: 'open_meteo_history',
-        rawContext: { startDate, endDate },
+        sourceId: 'amap_weather',
+        collector: 'amap_weather',
+        rawContext: { city: '310101', district: 'Shanghai Huangpu' },
       });
       try {
-        const count = await backfillOpenMeteoDaily(db, { startDate, endDate, runId });
+        const count = await collectAmapWeather(db, { runId });
         await finishRun(db, runId, { status: 'ok', recordsInserted: count });
-        console.log(`backfilled weather observations: ${count}`);
+        console.log(`collected AMap weather observations: ${count}`);
       } catch (error) {
         await finishRun(db, runId, { status: 'error', errorMessage: error.message });
         throw error;

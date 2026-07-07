@@ -127,7 +127,7 @@ async function seedV2Sources(db) {
       'wttr.in current weather',
       0.65,
       '5m legacy / optional',
-      'Convenient current weather; use Open-Meteo archive for historical weather features',
+      'Convenient current weather; prefer AMap for China district current and forecast weather',
     ],
     [
       'holiday',
@@ -145,15 +145,15 @@ async function seedV2Sources(db) {
       'optional',
       'Optional local context signals when API key is available',
     ],
-    ['manual', 'manual', 'Manual historical observations', 0.5, 'ad hoc', 'Legacy manually-entered historical values'],
     [
-      'open_meteo_archive',
+      'amap_weather',
       'api',
-      'Open-Meteo historical weather archive',
-      0.9,
-      'daily backfill',
-      'Historical weather features for Tianzifang coordinates',
+      'AMap district weather API',
+      0.75,
+      'manual / scheduled',
+      'Huangpu District current and forecast weather for Tianzifang context; no historical hourly backfill',
     ],
+    ['manual', 'manual', 'Manual historical observations', 0.5, 'ad hoc', 'Legacy manually-entered historical values'],
   ];
 
   for (const source of sources) {
@@ -172,6 +172,14 @@ async function seedV2Sources(db) {
       source,
     );
   }
+
+  await db.run(`
+    UPDATE data_sources
+    SET active = FALSE,
+        notes = 'Deprecated by project policy; do not use for new Tianzifang weather collection',
+        updated_at = NOW()
+    WHERE source_id = 'open_meteo_archive'
+  `);
 
   await db.run(`
     INSERT INTO data_sources(source_id, source_type, display_name, reliability, cadence, notes)
