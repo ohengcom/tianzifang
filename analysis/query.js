@@ -1,9 +1,16 @@
 #!/usr/bin/env node
 import { pathToFileURL } from 'node:url';
+import { getHolidayInfoForDate } from '../collectors/holiday.js';
 import { getDb } from '../config/db.js';
+import { shanghaiDate, weekdayFromShanghaiDate } from '../utils/time.js';
 
 const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const USAGE = 'node analysis/query.js [today|date YYYY-MM-DD|summary|forecast]';
+const DEFAULT_FORECAST = {
+  weekday: { avg: 5200, max: 9100 },
+  weekend: { avg: 7000, max: 12250 },
+  holiday: { avg: 8200, max: 14500 },
+};
 
 export function validateDate(dateStr) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr || '')) {
@@ -50,7 +57,7 @@ export async function showDate(dateStr) {
 
   const weather = await db.exec(
     `
-      SELECT metric, value, unit FROM crowd_data
+      SELECT metric, value, text_value, unit FROM crowd_data
       WHERE source = $1
         AND ts >= $2::timestamptz AND ts < ($2::timestamptz + interval '1 day')
       ORDER BY ts, metric
@@ -59,8 +66,8 @@ export async function showDate(dateStr) {
   );
   if (weather.length > 0 && weather[0].values.length > 0) {
     console.log('\nWeather:');
-    for (const [metric, value, unit] of weather[0].values) {
-      if (metric === 'weather_desc') console.log(`  ${unit}`);
+    for (const [metric, value, textValue, unit] of weather[0].values) {
+      if (metric === 'weather_desc') console.log(`  ${textValue || unit || ''}`);
       else console.log(`  ${metric}: ${value}${unit}`);
     }
   }
@@ -92,47 +99,123 @@ export async function showSummary() {
   }
 }
 
+export function weatherBucket(description = '') {
+  const text = String(description || '').toLowerCase();
+  if (!text) return null;
+  if (/雨|rain|shower|drizzle|雷|storm/.test(text)) return 'rain';
+  if (/雪|snow|sleet/.test(text)) return 'snow';
+  if (/雾|霾|fog|mist|haze/.test(text)) return 'poor_visibility';
+  if (/晴|sunny|clear/.test(text)) return 'clear';
+  if (/云|阴|cloud|overcast/.test(text)) return 'cloudy';
+  return 'other';
+}
+
+export function estimateFromHistory(rows, fallbackKey) {
+  const sampleCount = Number(rows?.[0]?.[2] || 0);
+  if (sampleCount > 0) {
+    return {
+      avg: Math.round(Number(rows[0][0])),
+      max: Math.round(Number(rows[0][1])),
+      sampleCount,
+    };
+  }
+  return { ...DEFAULT_FORECAST[fallbackKey], sampleCount: 0 };
+}
+
+async function loadWeatherForecast() {
+  try {
+    const resp = await fetch('https://wttr.in/Shanghai?format=j1', {
+      signal: AbortSignal.timeout(12000),
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+    });
+    const data = await resp.json();
+    const byDate = new Map();
+    for (const day of data.weather || []) {
+      const desc = day.hourly?.[4]?.lang_zh?.[0]?.value || day.hourly?.[4]?.weatherDesc?.[0]?.value || '';
+      byDate.set(day.date, {
+        description: desc,
+        bucket: weatherBucket(desc),
+        maxTemp: day.maxtempC != null ? Number(day.maxtempC) : null,
+        minTemp: day.mintempC != null ? Number(day.mintempC) : null,
+      });
+    }
+    return byDate;
+  } catch {
+    return new Map();
+  }
+}
+
+function weatherBucketSql() {
+  return `
+    CASE
+      WHEN weather_desc ILIKE '%雨%' OR weather_desc ILIKE '%rain%' OR weather_desc ILIKE '%shower%' THEN 'rain'
+      WHEN weather_desc ILIKE '%雪%' OR weather_desc ILIKE '%snow%' THEN 'snow'
+      WHEN weather_desc ILIKE '%雾%' OR weather_desc ILIKE '%霾%' OR weather_desc ILIKE '%fog%' OR weather_desc ILIKE '%haze%' THEN 'poor_visibility'
+      WHEN weather_desc ILIKE '%晴%' OR weather_desc ILIKE '%sunny%' OR weather_desc ILIKE '%clear%' THEN 'clear'
+      WHEN weather_desc ILIKE '%云%' OR weather_desc ILIKE '%阴%' OR weather_desc ILIKE '%cloud%' OR weather_desc ILIKE '%overcast%' THEN 'cloudy'
+      ELSE 'other'
+    END
+  `;
+}
+
+async function queryHistory(db, { weekday, isHoliday, bucket = null }) {
+  const bucketFilter = bucket ? `AND ${weatherBucketSql()} = $3` : '';
+  const params = bucket ? [weekday, isHoliday, bucket] : [weekday, isHoliday];
+  return db.exec(
+    `
+      SELECT AVG(avg_crowd) AS avg_crowd, AVG(max_crowd) AS max_crowd, COUNT(*) AS sample_count
+      FROM daily_summary
+      WHERE weekday = $1
+        AND COALESCE(is_holiday, 0) = $2
+        AND avg_crowd IS NOT NULL
+        AND max_crowd IS NOT NULL
+        ${bucketFilter}
+    `,
+    params,
+  );
+}
+
 export async function forecast() {
   const db = await getDb();
-  const now = new Date();
+  const weatherByDate = await loadWeatherForecast();
 
   console.log('\n7-day crowd forecast');
-  console.log('-'.repeat(60));
+  console.log('-'.repeat(92));
 
   for (let i = 0; i < 7; i++) {
-    const future = new Date(now);
-    future.setDate(future.getDate() + i);
-    const dateStr = future.toLocaleDateString('sv-SE', { timeZone: 'Asia/Shanghai' });
-    const wd = future.getDay() === 0 ? 6 : future.getDay() - 1;
+    const dateStr = shanghaiDate(i);
+    const wd = weekdayFromShanghaiDate(dateStr);
     const dayName = DAY_NAMES[wd];
+    let holidayInfo;
+    try {
+      holidayInfo = getHolidayInfoForDate(dateStr);
+    } catch {
+      holidayInfo = { isHoliday: 0, holidayName: '', isWorkday: wd < 5 ? 1 : 0 };
+    }
+    const weather = weatherByDate.get(dateStr) || {};
+    const fallbackKey = holidayInfo.isHoliday ? 'holiday' : wd < 5 ? 'weekday' : 'weekend';
 
-    const hist = await db.exec(
-      `
-        SELECT AVG(avg_crowd) AS avg_crowd, AVG(max_crowd) AS max_crowd, COUNT(*) AS sample_count
-        FROM daily_summary
-        WHERE weekday = $1 AND is_holiday = $2
-      `,
-      [wd, 0],
-    );
-
-    let estAvg;
-    let estMax;
-    let confidence;
-    const sampleCount = Number(hist[0]?.values[0]?.[2] || 0);
-    if (sampleCount > 0) {
-      estAvg = Math.round(hist[0].values[0][0]);
-      estMax = Math.round(hist[0].values[0][1]);
-      confidence = `based on ${sampleCount} historical days`;
-    } else {
-      const base = wd < 5 ? 26000 : 35000;
-      estAvg = Math.round(base * 0.2);
-      estMax = Math.round(base * 0.35);
-      confidence = 'default estimate';
+    let hist = null;
+    let source = 'default estimate';
+    if (weather.bucket) {
+      hist = await queryHistory(db, { weekday: wd, isHoliday: holidayInfo.isHoliday, bucket: weather.bucket });
+      if (Number(hist[0]?.values[0]?.[2] || 0) > 0) {
+        source = `${hist[0].values[0][2]} historical days, same weekday/holiday/weather`;
+      }
+    }
+    if (!hist || Number(hist[0]?.values[0]?.[2] || 0) === 0) {
+      hist = await queryHistory(db, { weekday: wd, isHoliday: holidayInfo.isHoliday });
+      if (Number(hist[0]?.values[0]?.[2] || 0) > 0) {
+        source = `${hist[0].values[0][2]} historical days, same weekday/holiday`;
+      }
     }
 
+    const estimate = estimateFromHistory(hist[0]?.values, fallbackKey);
+    const weatherLabel = weather.description || 'weather n/a';
+    const holidayLabel = holidayInfo.holidayName || (holidayInfo.isHoliday ? 'holiday' : 'regular');
     const marker = i === 0 ? '*' : ' ';
     console.log(
-      `${marker} ${dateStr} ${dayName}  avg:${String(estAvg).padStart(5)}  max:${String(estMax).padStart(5)}  (${confidence})`,
+      `${marker} ${dateStr} ${dayName}  avg:${String(estimate.avg).padStart(5)}  max:${String(estimate.max).padStart(5)}  ${holidayLabel}  ${weatherLabel}  (${source})`,
     );
   }
 }

@@ -2,7 +2,7 @@
 
 Collects and summarizes Tianzifang crowd-related signals with a single Node.js runtime and PostgreSQL storage.
 
-Current version: `1.1.0`
+Current version: `1.2.0`
 
 ## Stack
 
@@ -113,13 +113,37 @@ cp .env.example .env
 # Fill NEON_URL in .env, then load it with your shell or runtime environment.
 ```
 
+## Neon Database
+
+This project intentionally supports the Neon PostgreSQL path only. There is no local SQLite or local PostgreSQL fallback.
+
+- `NEON_URL` is required for every command that reads or writes data.
+- `npm run init` applies idempotent Neon schema setup, creates query indexes, and records the applied schema version in `schema_migrations`.
+- Collector HTTP failures are recorded through collector status rows; normal successful responses with no fresh scenic data write zero metric rows.
+- Holiday data is strict for configured tables, but production collection falls back to weekday/workday markers with `confidence='unavailable'` if a future year has not been configured yet.
+
+## Data Semantics
+
+- `crowd_data.source='gov_tour'` + `metric='in_park_count'` is a point-in-time in-park count sample, not cumulative visitor traffic.
+- `daily_summary.total_visitors` is intentionally written as `NULL` until a reliable cumulative visitor source is available.
+- `daily_summary.notes` keeps `in_park_sample_sum=...` as a diagnostic value only; do not use it as total visitors.
+
 ## Notes
 
 - The project intentionally uses the Node/PostgreSQL path only.
 - Runtime settings are centralized in `config/settings.js`.
 - Scheduled mode runs collection jobs in the Asia/Shanghai timezone.
+- Source files are UTF-8. If PowerShell displays Chinese text as mojibake, verify with a UTF-8 reader before treating the file as corrupted.
 
 ## Release Notes
+
+### 1.2.0
+
+- Hardened the Neon-only production path with idempotent schema migration tracking and query indexes.
+- Corrected the daily summary visitor semantics: in-park count samples are no longer treated as cumulative visitors.
+- Improved collector failure reporting for HTTP/JSON failures and added unavailable fallback records for missing future holiday tables.
+- Updated N8N workflow backup writes to match the PostgreSQL schema and use conflict-safe upserts.
+- Upgraded dependencies and migrated Biome configuration to the current schema.
 
 ### 1.1.0
 

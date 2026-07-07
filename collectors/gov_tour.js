@@ -23,41 +23,48 @@ export class GovTourCollector extends BaseCollector {
         },
       });
 
-      if (resp.ok) {
-        const data = await resp.json();
-        const rows = Array.isArray(data?.rows) ? data.rows : [];
-        const spot = rows.find((r) => TIANZIFANG_NAMES.some((name) => String(r.NAME || '').includes(name)));
-        if (spot && spot.NUM !== undefined && spot.NUM !== null) {
-          const meta = {
-            source: 'sh_a_scenic_realtime',
-            api: TOURIST_API,
-            code: spot.CODE,
-            name: spot.NAME,
-            time: spot.TIME,
-            grade: spot.GRADE,
-            comfort: spot.SSD,
-            max_num: spot.MAX_NUM,
-            type: spot.TYPE,
-            district: spot.DNAME,
-          };
-          if (spot.TIME) {
-            const apiTime = new Date(`${spot.TIME.replace(' ', 'T')}+08:00`);
-            const diffMin = (Date.now() - apiTime.getTime()) / 60000;
-            if (diffMin > 30) {
-              // API数据已过期（官方停止更新），不存储
-              return [];
-            }
+      if (!resp.ok) {
+        throw new Error(`HTTP ${resp.status} ${resp.statusText}`);
+      }
+
+      let data;
+      try {
+        data = await resp.json();
+      } catch (error) {
+        throw new Error(`Invalid JSON: ${error.message}`);
+      }
+
+      const rows = Array.isArray(data?.rows) ? data.rows : [];
+      const spot = rows.find((r) => TIANZIFANG_NAMES.some((name) => String(r.NAME || '').includes(name)));
+      if (spot && spot.NUM !== undefined && spot.NUM !== null) {
+        const meta = {
+          source: 'sh_a_scenic_realtime',
+          api: TOURIST_API,
+          code: spot.CODE,
+          name: spot.NAME,
+          time: spot.TIME,
+          grade: spot.GRADE,
+          comfort: spot.SSD,
+          max_num: spot.MAX_NUM,
+          type: spot.TYPE,
+          district: spot.DNAME,
+        };
+        if (spot.TIME) {
+          const apiTime = new Date(`${spot.TIME.replace(' ', 'T')}+08:00`);
+          const diffMin = (Date.now() - apiTime.getTime()) / 60000;
+          if (diffMin > 30) {
+            // API数据已过期（官方停止更新），不存储
+            return [];
           }
-          return [['in_park_count', Number(spot.NUM), '人', 'measured', meta]];
         }
-      } else {
-        console.error(`[gov_tour] HTTP ${resp.status}`);
+        return [['in_park_count', Number(spot.NUM), '人', 'measured', meta]];
       }
     } catch (e) {
       console.error(`[gov_tour] 请求失败: ${e.message}`);
+      throw e;
     }
 
-    // API数据不可用时不存储
+    // API正常响应但未包含田子坊新鲜数据时不存储。
     return [];
   }
 }

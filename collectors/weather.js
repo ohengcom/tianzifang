@@ -27,7 +27,7 @@ export class WeatherCollector extends BaseCollector {
         records.push(['temperature_min', parseFloat(today.mintempC), '℃', 'measured', {}]);
       }
 
-      records.push(['weather_desc', null, desc, 'measured', { raw: current }]);
+      records.push(['weather_desc', desc, '', 'measured', { raw: current }]);
     } catch (e) {
       records.push(['weather_status', null, 'error', 'unavailable', { error: e.message }]);
     }

@@ -1,15 +1,15 @@
 {
   "name": "tianzifang-crowd",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Tianzifang crowd data collection and analysis",
   "type": "module",
   "dependencies": {
-    "node-cron": "^4.2.1",
-    "pg": "^8.21.0"
+    "node-cron": "^4.6.0",
+    "pg": "^8.22.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.16",
-    "vitest": "^4.1.8"
+    "@biomejs/biome": "^2.5.2",
+    "vitest": "^4.1.10"
   },
   "engines": {
     "node": ">=20.19.0"

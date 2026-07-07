@@ -1,4 +1,5 @@
 import { USER_AGENT } from '../config/settings.js';
+import { toShanghaiIsoString } from '../utils/time.js';
 
 export class BaseCollector {
   constructor() {
@@ -10,7 +11,7 @@ export class BaseCollector {
   }
 
   nowISO() {
-    return `${new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Shanghai' }).replace(' ', 'T')}+08:00`;
+    return toShanghaiIsoString();
   }
 
   todayStr() {
@@ -23,14 +24,25 @@ export class BaseCollector {
       signal: AbortSignal.timeout(20000),
       ...options,
     });
-    return resp.json();
+    if (!resp.ok) {
+      throw new Error(`HTTP ${resp.status} ${resp.statusText} for ${url}`);
+    }
+    try {
+      return await resp.json();
+    } catch (error) {
+      throw new Error(`Invalid JSON from ${url}: ${error.message}`);
+    }
   }
 
-  async fetchText(url) {
+  async fetchText(url, options = {}) {
     const resp = await fetch(url, {
-      headers: { 'User-Agent': USER_AGENT },
+      headers: { 'User-Agent': USER_AGENT, ...options.headers },
       signal: AbortSignal.timeout(20000),
+      ...options,
     });
+    if (!resp.ok) {
+      throw new Error(`HTTP ${resp.status} ${resp.statusText} for ${url}`);
+    }
     return resp.text();
   }
 
@@ -38,11 +50,29 @@ export class BaseCollector {
     const ts = this.nowISO();
     let count = 0;
     for (const [metric, value, unit, confidence, raw] of records) {
-      await db.run(
-        'INSERT INTO crowd_data (ts, source, metric, value, unit, confidence, raw_json) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-        [ts, this.name, metric, value, unit, confidence, raw ? JSON.stringify(raw) : null],
+      const isNumericValue = value === null || typeof value === 'number';
+      const numericValue = isNumericValue ? value : null;
+      const textValue = isNumericValue ? null : String(value);
+      const result = await db.run(
+        `
+        INSERT INTO crowd_data (ts, source, metric, value, text_value, unit, confidence, raw_json, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+        ON CONFLICT (ts, source, metric) DO UPDATE SET
+          value = EXCLUDED.value,
+          text_value = EXCLUDED.text_value,
+          unit = EXCLUDED.unit,
+          confidence = EXCLUDED.confidence,
+          raw_json = EXCLUDED.raw_json,
+          created_at = NOW()
+        WHERE crowd_data.value IS DISTINCT FROM EXCLUDED.value
+          OR crowd_data.text_value IS DISTINCT FROM EXCLUDED.text_value
+          OR crowd_data.unit IS DISTINCT FROM EXCLUDED.unit
+          OR crowd_data.confidence IS DISTINCT FROM EXCLUDED.confidence
+          OR crowd_data.raw_json IS DISTINCT FROM EXCLUDED.raw_json
+      `,
+        [ts, this.name, metric, numericValue, textValue, unit, confidence, raw ? JSON.stringify(raw) : null],
       );
-      count++;
+      count += result.rowCount;
     }
     return count;
   }

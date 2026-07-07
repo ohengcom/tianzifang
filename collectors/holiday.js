@@ -54,7 +54,70 @@ const CN_WORKDAYS_2026 = [
   [10, 10, '国庆调休上班'],
 ];
 
-const SUPPORTED_YEARS = [2026];
+const HOLIDAY_TABLES = {
+  2026: {
+    holidays: CN_HOLIDAYS_2026,
+    workdays: CN_WORKDAYS_2026,
+  },
+};
+
+export const SUPPORTED_HOLIDAY_YEARS = Object.freeze(Object.keys(HOLIDAY_TABLES).map(Number));
+
+function weekdayFromDateString(dateStr) {
+  const weekday = new Date(`${dateStr}T12:00:00+08:00`).getUTCDay();
+  return weekday === 0 ? 6 : weekday - 1;
+}
+
+export function getWeekdayFallbackForDate(dateStr) {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const weekday = weekdayFromDateString(dateStr);
+  return {
+    year,
+    month,
+    day,
+    weekday,
+    isHoliday: 0,
+    isWorkday: weekday < 5 ? 1 : 0,
+    isWorkdayOverride: false,
+    holidayName: '',
+    configured: false,
+  };
+}
+
+export function getHolidayInfoForDate(dateStr) {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const weekday = weekdayFromDateString(dateStr);
+  const table = HOLIDAY_TABLES[year];
+
+  if (!table) {
+    throw new Error(
+      `HolidayCollector: 年份 ${year} 尚未配置假日表，请在 collectors/holiday.js 中补充 HOLIDAY_TABLES[${year}]。`,
+    );
+  }
+
+  let isHoliday = 0;
+  let holidayName = '';
+
+  for (const [m, d, name] of table.holidays) {
+    if (m === month && d === day) {
+      isHoliday = 1;
+      holidayName = name;
+      break;
+    }
+  }
+
+  let isWorkdayOverride = false;
+  for (const [m, d, name] of table.workdays) {
+    if (m === month && d === day) {
+      isWorkdayOverride = true;
+      holidayName = name;
+      break;
+    }
+  }
+
+  const isWorkday = (weekday < 5 && !isHoliday) || isWorkdayOverride ? 1 : 0;
+  return { year, month, day, weekday, isHoliday, isWorkday, isWorkdayOverride, holidayName, configured: true };
+}
 
 export class HolidayCollector extends BaseCollector {
   constructor() {
@@ -72,46 +135,34 @@ export class HolidayCollector extends BaseCollector {
     }
     this._lastCollectedDate = today;
 
-    const now = new Date();
-    const year = now.toLocaleDateString('en-US', { timeZone: 'Asia/Shanghai', year: 'numeric' }) * 1;
-    const month = now.toLocaleDateString('en-US', { timeZone: 'Asia/Shanghai', month: 'numeric' }) * 1;
-    const day = now.toLocaleDateString('en-US', { timeZone: 'Asia/Shanghai', day: 'numeric' }) * 1;
-    const weekday = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Shanghai' })).getDay();
-    // Convert: JS Sunday=0 → Monday=0
-    const wd = weekday === 0 ? 6 : weekday - 1;
-
-    if (!SUPPORTED_YEARS.includes(year)) {
-      throw new Error(
-        `HolidayCollector: 年份 ${year} 尚未配置假日表，请在 collectors/holiday.js 中补充 CN_HOLIDAYS_${year}。`,
-      );
+    let holidayInfo;
+    let confidence = 'measured';
+    try {
+      holidayInfo = getHolidayInfoForDate(today);
+    } catch (error) {
+      holidayInfo = getWeekdayFallbackForDate(today);
+      confidence = 'unavailable';
+      holidayInfo.holidayName = `holiday_table_missing_${holidayInfo.year}`;
+      holidayInfo.error = error.message;
     }
 
-    let isHoliday = 0;
-    let holidayName = '';
-
-    for (const [m, d, name] of CN_HOLIDAYS_2026) {
-      if (m === month && d === day) {
-        isHoliday = 1;
-        holidayName = name;
-        break;
-      }
-    }
-
-    let isWorkdayOverride = false;
-    for (const [m, d, name] of CN_WORKDAYS_2026) {
-      if (m === month && d === day) {
-        isWorkdayOverride = true;
-        holidayName = name;
-        break;
-      }
-    }
-
-    const isWorkday = (wd < 5 && !isHoliday) || isWorkdayOverride ? 1 : 0;
+    const { weekday: wd, isHoliday, isWorkday, isWorkdayOverride, holidayName } = holidayInfo;
 
     return [
-      ['is_holiday', isHoliday, 'bool', 'measured', { holiday_name: holidayName }],
-      ['is_workday', isWorkday, 'bool', 'measured', { weekday: wd, override: isWorkdayOverride }],
-      ['weekday', wd, 'day', 'measured', {}],
+      ['is_holiday', isHoliday, 'bool', confidence, { holiday_name: holidayName, configured: holidayInfo.configured }],
+      [
+        'is_workday',
+        isWorkday,
+        'bool',
+        confidence,
+        {
+          weekday: wd,
+          override: isWorkdayOverride,
+          configured: holidayInfo.configured,
+          error: holidayInfo.error || null,
+        },
+      ],
+      ['weekday', wd, 'day', confidence, { configured: holidayInfo.configured }],
     ];
   }
 }

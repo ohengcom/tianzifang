@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { HolidayCollector } from '../collectors/holiday.js';
+import { getHolidayInfoForDate, HolidayCollector } from '../collectors/holiday.js';
 import { computeCrowdStats } from '../main.js';
 
 // ---------------------------------------------------------------------------
@@ -63,14 +63,21 @@ describe('HolidayCollector', () => {
     expect(second).toHaveLength(0);
   });
 
-  it('不支持的年份（2025）应抛出错误', async () => {
-    fakeNow('2025-01-01T10:00:00+08:00');
-    await expect(collector.collect()).rejects.toThrow('HolidayCollector');
+  it('严格假日查询在未配置年份应抛出错误', () => {
+    expect(() => getHolidayInfoForDate('2027-01-01')).toThrow('HolidayCollector');
   });
 
-  it('不支持的年份（2027）应抛出错误', async () => {
+  it('采集器遇到未配置年份时应降级为 weekday/workday fallback', async () => {
     fakeNow('2027-01-01T10:00:00+08:00');
-    await expect(collector.collect()).rejects.toThrow('HolidayCollector');
+    const records = await collector.collect();
+    const holiday = records.find(([m]) => m === 'is_holiday');
+    const workday = records.find(([m]) => m === 'is_workday');
+    const weekday = records.find(([m]) => m === 'weekday');
+    expect(holiday[1]).toBe(0);
+    expect(holiday[3]).toBe('unavailable');
+    expect(workday[1]).toBe(1);
+    expect(workday[4].configured).toBe(false);
+    expect(weekday[1]).toBe(4);
   });
 });
 
@@ -110,9 +117,10 @@ describe('computeCrowdStats', () => {
     expect(estimated).toBe(1);
   });
 
-  it('totalVisitors 为各样本之和', () => {
-    const { totalVisitors } = computeCrowdStats(samples, '2026-06-01');
-    expect(totalVisitors).toBe(1000 + 3000 + 2000 + 500);
+  it('keeps in-park sample sum separate from total visitors', () => {
+    const { sampleValueSum, totalVisitors } = computeCrowdStats(samples, '2026-06-01');
+    expect(sampleValueSum).toBe(1000 + 3000 + 2000 + 500);
+    expect(totalVisitors).toBeUndefined();
   });
 
   it('weekday (wd) 与日期对应：2026-06-01 是周一 → wd=0', () => {

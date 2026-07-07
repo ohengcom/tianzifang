@@ -24,7 +24,7 @@ class PgWrapper {
 
   // db.run(sql, params) → execute with params
   async run(sql, params = []) {
-    await this._pool.query(sql, params);
+    return this._pool.query(sql, params);
   }
 
   // db.prepare(sql) → returns stmt with .run() and .free()
@@ -66,6 +66,14 @@ export async function getDb() {
 export async function initDb() {
   const db = await getDb();
 
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS schema_migrations (
+      version TEXT PRIMARY KEY,
+      notes TEXT,
+      applied_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+
   // crowd_data.ts 使用 TIMESTAMPTZ，支持真正的时间范围索引和时区转换。
   // 如果表已存在但 ts 还是 TEXT，执行一次迁移（ALTER + 重建索引）。
   await db.run(`
@@ -75,11 +83,23 @@ export async function initDb() {
       source TEXT NOT NULL,
       metric TEXT NOT NULL,
       value DOUBLE PRECISION,
+      text_value TEXT,
       unit TEXT,
       confidence TEXT DEFAULT 'measured',
       raw_json TEXT,
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
+  `);
+
+  await db.run(`ALTER TABLE crowd_data ADD COLUMN IF NOT EXISTS text_value TEXT`);
+  await db.run(`
+    UPDATE crowd_data
+    SET text_value = unit, unit = ''
+    WHERE source = 'weather'
+      AND metric = 'weather_desc'
+      AND text_value IS NULL
+      AND value IS NULL
+      AND unit IS NOT NULL
   `);
 
   // 迁移：若 ts 列仍为 TEXT，原地转换为 TIMESTAMPTZ。
@@ -95,9 +115,34 @@ export async function initDb() {
     END$$
   `);
 
+  await db.run(`
+    DELETE FROM crowd_data a
+    USING crowd_data b
+    WHERE a.ts = b.ts
+      AND a.source = b.source
+      AND a.metric = b.metric
+      AND a.id < b.id
+  `);
+
+  await db.run(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'crowd_data_ts_source_metric_key'
+      ) THEN
+        ALTER TABLE crowd_data
+          ADD CONSTRAINT crowd_data_ts_source_metric_key
+          UNIQUE (ts, source, metric);
+      END IF;
+    END$$
+  `);
+
   await db.run(`CREATE INDEX IF NOT EXISTS idx_crowd_ts ON crowd_data(ts)`);
   await db.run(`CREATE INDEX IF NOT EXISTS idx_crowd_source ON crowd_data(source)`);
   await db.run(`CREATE INDEX IF NOT EXISTS idx_crowd_metric ON crowd_data(metric)`);
+  await db.run(`CREATE INDEX IF NOT EXISTS idx_crowd_source_metric_ts ON crowd_data(source, metric, ts)`);
 
   await db.run(`
     CREATE TABLE IF NOT EXISTS daily_summary (
@@ -115,5 +160,22 @@ export async function initDb() {
       notes TEXT
     )
   `);
+  await db.run(`ALTER TABLE daily_summary ADD COLUMN IF NOT EXISTS holiday_name TEXT`);
+  await db.run(`ALTER TABLE daily_summary ADD COLUMN IF NOT EXISTS weather_desc TEXT`);
+  await db.run(`ALTER TABLE daily_summary ADD COLUMN IF NOT EXISTS temperature_high DOUBLE PRECISION`);
+  await db.run(`ALTER TABLE daily_summary ADD COLUMN IF NOT EXISTS temperature_low DOUBLE PRECISION`);
+  await db.run(`CREATE INDEX IF NOT EXISTS idx_daily_summary_weekday_holiday ON daily_summary(weekday, is_holiday)`);
+  await db.run(`CREATE INDEX IF NOT EXISTS idx_daily_summary_weather_desc ON daily_summary(weather_desc)`);
+
+  await db.run(
+    `
+      INSERT INTO schema_migrations(version, notes)
+      VALUES ($1, $2)
+      ON CONFLICT (version) DO UPDATE SET
+        notes = EXCLUDED.notes,
+        applied_at = NOW()
+    `,
+    ['2026-07-07-neon-core-schema', 'Neon PostgreSQL schema, idempotent columns, upsert keys, and query indexes'],
+  );
   return db;
 }
