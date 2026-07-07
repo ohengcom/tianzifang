@@ -27,6 +27,27 @@ function log(msg) {
   console.log(`[${toShanghaiLogTimestamp()}] ${msg}`);
 }
 
+function shanghaiHour(value) {
+  if (!value) return null;
+  return Number(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Shanghai',
+      hour: '2-digit',
+      hour12: false,
+    }).format(new Date(value)),
+  );
+}
+
+function shanghaiTime(value) {
+  if (!value) return '';
+  return new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date(value));
+}
+
 /**
  * 计算样本集的聚合统计，供 runReport 和 runDailySummary 共用。
  * @param {{ value: number, ts: string, confidence: string }[]} samples
@@ -39,7 +60,7 @@ export function computeCrowdStats(samples, today) {
   const avg = Math.round(values.reduce((a, b) => a + b, 0) / values.length);
   const sampleValueSum = Math.round(values.reduce((a, b) => a + b, 0));
   const peak = samples.reduce((best, cur) => (cur.value > best.value ? cur : best), samples[0]);
-  const peakHour = peak.ts ? Number(String(peak.ts).substring(11, 13)) : null;
+  const peakHour = peak.ts ? shanghaiHour(peak.ts) : null;
   const measured = samples.filter((s) => s.confidence === 'measured').length;
   const stale = samples.filter((s) => s.confidence === 'stale').length;
   const estimated = samples.filter((s) => s.confidence === 'estimated').length;
@@ -58,15 +79,16 @@ export function computeCrowdStats(samples, today) {
  * @param {object} db
  * @param {string} date  YYYY-MM-DD
  */
-async function loadGovTourSamples(db, date) {
+async function loadGovTourSamples(db, date, { measuredOnly = true } = {}) {
   const rows = await db.exec(
     `
     SELECT value, ts, confidence, raw_json FROM crowd_data
     WHERE source = $1 AND metric = $2
       AND ts >= $3::timestamptz AND ts < ($3::timestamptz + interval '1 day')
+      AND ($4::boolean = false OR confidence = 'measured')
     ORDER BY ts
   `,
-    ['gov_tour', 'in_park_count', `${date}T00:00:00+08:00`],
+    ['gov_tour', 'in_park_count', `${date}T00:00:00+08:00`, measuredOnly],
   );
 
   if (!rows.length || !rows[0].values.length) return [];
@@ -108,31 +130,31 @@ async function runReport(dateStr) {
     .sort((a, b) => a.officialTime.localeCompare(b.officialTime));
   const firstOfficialUpdate = officialUpdates[0];
 
-  console.log(`- 计划采集频率：06:00-08:30 每30分钟（估算段）；09:00-21:55 每5分钟（实测段）；22:00 单次`);
+  console.log('- 统计口径：仅使用官方实时接口返回的 measured 在园人数样本');
   console.log(`- 实际样本数：${samples.length} 条（实测 ${measured}，API冻结 ${stale}，估算 ${estimated}）`);
   if (firstOfficialUpdate) {
     console.log(
-      `- 官方首次更新：${firstOfficialUpdate.officialTime.substring(11, 16)}（采集于 ${firstOfficialUpdate.collectTs.substring(11, 16)}，${Math.round(firstOfficialUpdate.value)} 人）`,
+      `- 官方首次更新：${firstOfficialUpdate.officialTime.substring(11, 16)}（采集于 ${shanghaiTime(firstOfficialUpdate.collectTs)}，${Math.round(firstOfficialUpdate.value)} 人）`,
     );
   } else {
     console.log('- 官方首次更新：昨日未采到有效官方实时数据');
   }
-  console.log(`- 最高在园：${Math.round(max)} 人（${peak.ts.substring(11, 16)}）`);
+  console.log(`- 最高在园：${Math.round(max)} 人（${shanghaiTime(peak.ts)}）`);
   console.log(`- 平均在园：${avg} 人`);
   console.log(`- 最低在园：${Math.round(min)} 人`);
 
   const hourly = new Map();
   for (const sample of samples) {
-    const hour = sample.ts.substring(11, 13);
+    const hour = shanghaiHour(sample.ts);
     if (!hourly.has(hour)) hourly.set(hour, []);
     hourly.get(hour).push(sample.value);
   }
   const lastMeasured = samples.filter((s) => s.confidence === 'measured').slice(-1)[0];
   if (lastMeasured) {
-    console.log(`- 官方实时数据窗口：首次更新至 ${lastMeasured.ts.substring(11, 16)}`);
+    console.log(`- 官方实时数据窗口：首次更新至 ${shanghaiTime(lastMeasured.ts)}`);
   }
-  if (stale > 0) {
-    console.log(`- ⚠️ 18:00后API数据冻结，${stale}条样本标记为 stale，仅供参考`);
+  if (stale > 0 || estimated > 0) {
+    console.log(`- 已排除非实测样本：API冻结 ${stale} 条，估算 ${estimated} 条`);
   }
 
   const hourlyAvg = [...hourly.entries()].map(([hour, vals]) => [
@@ -144,7 +166,7 @@ async function runReport(dateStr) {
 
   const last = samples[samples.length - 1];
   const comfort = last.raw?.comfort ? `，舒适度：${last.raw.comfort}` : '';
-  console.log(`- 最后采样：${last.ts.substring(11, 16)}，${Math.round(last.value)} 人${comfort}`);
+  console.log(`- 最后采样：${shanghaiTime(last.ts)}，${Math.round(last.value)} 人${comfort}`);
 }
 
 async function runCollection() {
@@ -213,9 +235,8 @@ async function runDailySummary(dateStr = null) {
   const today = dateStr || toShanghaiDateString();
   log(`生成 ${today} 日汇总...`);
 
-  // 田子坊官方实时页经常不可抓取，gov_tour 会降级为 estimated。
-  // 预测系统需要 daily_summary 做基线，因此这里保留所有 confidence，
-  // 并在 notes 中记录 measured/scraped/estimated 的构成。
+  // 面向人的日报和 daily_summary 只使用官方实时接口返回的 measured 样本。
+  // 历史模型估算值可能混淆“瞬时在园人数”和“累计客流”，不得进入日报统计。
   const samples = await loadGovTourSamples(db, today);
 
   if (!samples.length) {

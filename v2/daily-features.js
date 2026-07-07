@@ -1,4 +1,4 @@
-﻿function percentile(values, p) {
+function percentile(values, p) {
   if (!values.length) return null;
   const sorted = [...values].sort((a, b) => a - b);
   const index = (sorted.length - 1) * p;
@@ -150,6 +150,7 @@ export async function deriveDailyFeature(db, date) {
       WHERE source_id = 'gov_tour'
         AND entity_id = 'tianzifang'
         AND metric = 'in_park_count'
+        AND quality = 'measured'
         AND observed_at >= $1::timestamptz
         AND observed_at < ($1::timestamptz + interval '1 day')
         AND value_num IS NOT NULL
@@ -284,6 +285,7 @@ export async function deriveDailyFeatures(db, { startDate, endDate }) {
       FROM observations
       WHERE source_id = 'gov_tour'
         AND metric = 'in_park_count'
+        AND quality = 'measured'
         AND observed_at >= $1::date
         AND observed_at < ($2::date + interval '1 day')
       ORDER BY date

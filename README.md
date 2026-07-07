@@ -2,7 +2,7 @@
 
 Collects and summarizes Tianzifang crowd-related signals with a single Node.js runtime and PostgreSQL storage.
 
-Current version: `1.4.2`
+Current version: `1.4.3`
 
 ## Stack
 
@@ -17,7 +17,8 @@ Current version: `1.4.2`
 | Source | Collector | Notes |
 | --- | --- | --- |
 | Shanghai A-level scenic realtime API | `collectors/gov_tour.js` | In-park count and official metadata |
-| wttr.in | `collectors/weather.js` | Weather and temperature signals |
+| AMap Weather | `collectors/amap_weather.js` | Huangpu District current/forecast weather in v2 observations |
+| wttr.in | `collectors/weather.js` | Legacy local/manual weather collector only; not used for new v2 weather context |
 | Local holiday table | `collectors/holiday.js` | 2026 holiday/workday flags |
 
 ## Commands
@@ -53,10 +54,12 @@ tianzifang/
   analysis/        Query CLI and tests
   collectors/      Data collectors
   config/          Runtime settings and PostgreSQL wrapper
+  data/            Curated historical/event anchor inputs
   docs/            Architecture and upgrade notes
   main.js          Collection, summary, report, and scheduler entrypoint
   n8n/             N8N 工作流导出（备份）
   openclaw/        OpenClaw 定时任务配置（备份）
+  reports/         Generated WordPress-friendly report artifacts
   v2/              Normalized observation and feature derivation layer
 ```
 
@@ -70,14 +73,14 @@ tianzifang/
 
 - 工作流名称：`田子坊数据采集`
 - 触发器：`*/5 7-18 * * *`（每天 07:00-18:55，每 5 分钟）
-- 流程：定时触发 → 获取景区数据 → 获取天气 → 合并写入 → 写入 Neon → 汇总结果
+- 流程：定时触发 → 获取景区实测在园人数 → 获取节假日标记 → 写入 Neon → 汇总结果
 - 数据直接通过 HTTP API 写入 Neon PostgreSQL，不经过本地脚本
 - 工作流备份：[`n8n/tianzifang-workflow.json`](n8n/tianzifang-workflow.json)
 
 **数据源：**
 - `gov_tour` — 上海市 A 级景区实时客流（tourist.whlyj.sh.gov.cn）
-- `weather` — wttr.in 天气数据（温度、湿度、风速、天气描述）
 - `holiday` — 节假日/工作日标记（2026 年硬编码）
+- AMap 天气不在 N8N 主流程中采集；使用 `npm run v2:collect:amap-weather` 写入 v2 observations，作为黄浦区天气上下文。
 
 > ⚠️ N8N 工作流不使用本地 `collectors/` 目录下的 Node.js 采集器。
 > 本地采集器用于手动测试和 `--schedule` 模式，两者独立运行。
@@ -140,7 +143,8 @@ This project intentionally supports the Neon PostgreSQL path only. There is no l
 - `daily_summary.notes` keeps `in_park_sample_sum=...` as a diagnostic value only; do not use it as total visitors.
 - Crowd analysis should consider multiple local drivers: holidays, weather, activities, policy/media context, mobility, temporary operations, nearby events, school/office calendars, and data quality.
 - See [`docs/HISTORICAL_CROWD_SOURCES.md`](docs/HISTORICAL_CROWD_SOURCES.md) for verified and candidate historical crowd sources.
-- `npm run v2:report-html` generates [`reports/tianzifang-crowd-report.html`](reports/tianzifang-crowd-report.html) for blog embedding.
+- `npm run v2:derive -- START END` derives measured-only daily features from official `gov_tour` samples.
+- `npm run v2:report-html` generates a no-script HTML + inline SVG WordPress-friendly embed at [`reports/tianzifang-crowd-report.html`](reports/tianzifang-crowd-report.html).
 
 ## Notes
 
@@ -151,11 +155,19 @@ This project intentionally supports the Neon PostgreSQL path only. There is no l
 
 ## Release Notes
 
+### 1.4.3
+
+- Standardized human-facing crowd statistics on official `quality=measured` gov_tour samples only.
+- Excluded legacy `estimated` / `historical_model` rows from daily features, yesterday reports, and blog embeds.
+- Simplified the WordPress embed into a no-script HTML/SVG trend card with hourly quiet-period guidance.
+- Updated the N8N workflow backup to collect measured gov_tour and holiday markers only; AMap weather remains in the v2 collection path.
+- Cleaned local-tool ignore rules so `.agents/`, `.codex/`, `.env`, and `node_modules/` stay out of commits.
+
 ### 1.4.2
 
 - Expanded historical/context anchors to cover 2024-2026 Tianzifang crowd reports, partial-day figures, instant peaks, activities, and policy context.
 - Added `activity_event_count`, `context_signal_count`, and strongest context confidence to daily features.
-- Added `npm run v2:report-html` to generate a self-contained blog-embeddable HTML report.
+- Added `npm run v2:report-html` to generate a self-contained, no-script HTML/SVG blog embed with measured-only trends and hourly quiet-period guidance.
 - Restored `.env.example` with safe placeholder values only.
 
 ### 1.4.0

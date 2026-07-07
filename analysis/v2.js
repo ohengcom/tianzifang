@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env node
+#!/usr/bin/env node
 import { pathToFileURL } from 'node:url';
 import { collectAmapWeather } from '../collectors/amap_weather.js';
 import { closeDb, getDb, initDb } from '../config/db.js';
@@ -29,7 +29,7 @@ async function summary() {
       sample_count,
       ROUND(avg_in_park::numeric, 1) AS avg_in_park,
       max_in_park,
-      reported_visitors,
+      reported_visitors AS reported_day_visitors,
       activity_event_count,
       context_signal_count,
       coverage_minutes,
@@ -41,7 +41,7 @@ async function summary() {
   if (features[0]?.values?.length) {
     console.log('\nRecent daily features:');
     console.log(
-      'date | samples | avg_in_park | max_in_park | reported_visitors | activity_events | context_signals | coverage_minutes | quality_score',
+      'date | samples | avg_in_park | max_in_park | reported_day_visitors | activity_events | context_signals | coverage_minutes | quality_score',
     );
     for (const row of features[0].values) console.log(row.join(' | '));
   }
@@ -100,7 +100,7 @@ export async function main() {
       const outputPath = startArg || 'reports/tianzifang-crowd-report.html';
       const result = await generateHtmlReport(db, { outputPath });
       console.log(`generated HTML report: ${result.outputPath}`);
-      console.log(`report rows: daily=${result.dailyRows}, anchors=${result.anchors}`);
+      console.log(`report rows: daily=${result.dailyRows}, hourly=${result.hourlyRows}`);
       break;
     }
     case 'summary':

@@ -2,7 +2,7 @@
 
 This document describes the v2 redesign for the Tianzifang crowd data project. The upgrade is additive: it keeps the legacy `crowd_data` and `daily_summary` tables, then adds a normalized observation layer and derived feature tables on Neon.
 
-Current release: `1.4.2`
+Current release: `1.4.3`
 
 ## Goals
 
@@ -49,7 +49,7 @@ flowchart LR
 - `observations`: normalized fact table for all metrics, including `period` anchors for reported historical crowd claims.
 - `daily_features`: derived per-day analytical features, with optional `reported_visitors*` fields for true day-level visitor counts.
 
-The `sync_crowd_data_to_observations` trigger mirrors future legacy writes into `observations`. Historical legacy rows are backfilled during `npm run v2:init`.
+The `sync_crowd_data_to_observations` trigger mirrors future legacy writes into `observations`. Historical legacy rows are backfilled during `npm run v2:init`. Public reports and `daily_features` now use only official `gov_tour` samples with `quality = 'measured'`; legacy `estimated` rows remain excluded from human-facing crowd statistics.
 
 ## Data Semantics
 
@@ -57,7 +57,7 @@ The `sync_crowd_data_to_observations` trigger mirrors future legacy writes into 
 
 v2 daily features use:
 
-- `sample_count`, `measured_count`: sampling volume and measured-quality sample count.
+- `sample_count`, `measured_count`: official measured sampling volume. Estimated historical-model rows are excluded.
 - `avg_in_park`, `p50_in_park`, `p95_in_park`, `max_in_park`: occupancy statistics.
 - `coverage_minutes`: valid integration coverage, ignoring gaps over 30 minutes.
 - `occupancy_person_hours`: trapezoidal integration of in-park occupancy over time.
@@ -108,7 +108,7 @@ Import verified historical crowd anchors:
 npm run v2:import-crowd-anchors
 ```
 
-Generate a blog-ready HTML report:
+Generate a WordPress-friendly no-script HTML/SVG report:
 
 ```bash
 npm run v2:report-html
@@ -136,6 +136,13 @@ npm run v2:summary
 - Add daily feature derivation based on occupancy statistics and person-hours.
 - Add v2 CLI scripts and documentation.
 
+### P2 - Completed in v1.4.3
+
+- Standardize `daily_features`, `report:yesterday`, and the WordPress embed on official measured `gov_tour` samples only.
+- Exclude legacy `estimated` / `historical_model` rows from human-facing crowd statistics.
+- Add a no-script HTML/SVG WordPress embed with measured-only trend lines and 7:00-19:00 hourly quiet-period guidance.
+- Update the N8N workflow backup so production collection no longer writes wttr.in weather into the legacy path.
+
 ### P2 - Completed in v1.4.2
 
 - Add an import path for manually curated historical observations with source, confidence, quote, URL, and period notes.
@@ -145,8 +152,8 @@ npm run v2:summary
 
 ### P2 - Next
 
-- Move the N8N workflow to write validated values only, especially for weather fields that currently can become zero when parsing fails.
-- Add alerting for stale `gov_tour` samples, zero-like weather parse failures, and collector HTTP/schema errors.
+- Schedule `npm run v2:collect:amap-weather`, `npm run v2:derive -- START END`, and `npm run v2:report-html` in the production automation path after each collection window.
+- Add alerting for stale/missing `gov_tour` measured samples, AMap HTTP/schema errors, and unusually sparse hourly coverage.
 - Add tests for AMap schema validation and daily feature calculations.
 
 ### P3 - Later

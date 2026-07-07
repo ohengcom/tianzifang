@@ -1,6 +1,6 @@
 {
   "name": "tianzifang-crowd",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "description": "Tianzifang crowd data collection and analysis",
   "type": "module",
   "dependencies": {
