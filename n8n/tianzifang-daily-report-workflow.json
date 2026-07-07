@@ -1,0 +1,176 @@
+{
+  "name": "田子坊每日客流报告",
+  "description": "Every day at 02:00 Asia/Shanghai: build yesterday measured-only Tianzifang crowd report from Neon and store it back to Neon.",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 2 * * *"
+            }
+          ]
+        }
+      },
+      "id": "node-daily-trigger",
+      "name": "Daily 02:00 trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { query: \"WITH params AS (\\n  SELECT ((now() AT TIME ZONE 'Asia/Shanghai')::date - interval '1 day')::date AS report_date\\n), samples AS (\\n  SELECT value, ts, confidence, raw_json\\n  FROM crowd_data, params\\n  WHERE source = 'gov_tour'\\n    AND metric = 'in_park_count'\\n    AND confidence = 'measured'\\n    AND ts >= (params.report_date::text || 'T00:00:00+08:00')::timestamptz\\n    AND ts < ((params.report_date + interval '1 day')::date::text || 'T00:00:00+08:00')::timestamptz\\n    AND value IS NOT NULL\\n  ORDER BY ts\\n), holiday AS (\\n  SELECT\\n    MAX(CASE WHEN metric = 'is_holiday' THEN value END) AS is_holiday,\\n    MAX(CASE WHEN metric = 'is_holiday' THEN raw_json END) AS holiday_raw,\\n    MAX(CASE WHEN metric = 'weekday' THEN value END) AS weekday\\n  FROM crowd_data, params\\n  WHERE source = 'holiday'\\n    AND ts >= (params.report_date::text || 'T00:00:00+08:00')::timestamptz\\n    AND ts < ((params.report_date + interval '1 day')::date::text || 'T00:00:00+08:00')::timestamptz\\n)\\nSELECT\\n  params.report_date::text AS date,\\n  COALESCE(json_agg(json_build_object('value', samples.value, 'ts', samples.ts, 'confidence', samples.confidence, 'raw_json', samples.raw_json) ORDER BY samples.ts) FILTER (WHERE samples.value IS NOT NULL), '[]'::json) AS samples,\\n  COALESCE(MAX(holiday.is_holiday), 0) AS is_holiday,\\n  MAX(holiday.holiday_raw) AS holiday_raw,\\n  MAX(holiday.weekday) AS holiday_weekday\\nFROM params\\nLEFT JOIN samples ON true\\nLEFT JOIN holiday ON true\\nGROUP BY params.report_date;\" } }];"
+      },
+      "id": "node-build-query",
+      "name": "Build report query",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://ep-sweet-river-aovxgd0t-pooler.c-2.ap-southeast-1.aws.neon.tech/sql",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Neon-Connection-String",
+              "value": "={{ $env.NEON_URL }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: $json.query }) }}",
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "node-query-neon",
+      "name": "Query yesterday data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const CN = {\n  \"workflowName\": \"田子坊每日客流报告\",\n  \"titlePrefix\": \"📊 田子坊昨日统计\",\n  \"scope\": \"- 统计口径：仅使用官方实时接口返回的 measured 在园人数样本\",\n  \"noSamples\": \"- 暂无有效在园人数样本。\",\n  \"sampleLineA\": \"- 实际样本数：\",\n  \"sampleLineB\": \" 条（实测 \",\n  \"sampleLineC\": \"，API冻结 0，估算 0）\",\n  \"firstUpdateA\": \"- 官方首次更新：\",\n  \"firstUpdateB\": \"（采集于 \",\n  \"people\": \" 人\",\n  \"closeParen\": \"）\",\n  \"maxA\": \"- 最高在园：\",\n  \"maxB\": \" 人（\",\n  \"avgA\": \"- 平均在园：\",\n  \"minA\": \"- 最低在园：\",\n  \"windowA\": \"- 官方实时数据窗口：首次更新至 \",\n  \"peakHoursA\": \"- 高峰小时：\",\n  \"pointApprox\": \"点≈\",\n  \"sep\": \"；\",\n  \"lastA\": \"- 最后采样：\",\n  \"comfortA\": \"，舒适度：\",\n  \"contextA\": \"- 日期背景：\"\n};\nconst row = ($json.rows || [])[0] || {};\nconst date = row.date;\nconst samples = Array.isArray(row.samples) ? row.samples : [];\n\nfunction sqlText(value) {\n  if (value === null || value === undefined) return 'NULL';\n  return `'${String(value).replace(/'/g, \"''\")}` + \"'\";\n}\nfunction sqlNumber(value) {\n  const number = Number(value);\n  return Number.isFinite(number) ? String(Math.round(number)) : 'NULL';\n}\nfunction sqlFloat(value) {\n  const number = Number(value);\n  return Number.isFinite(number) ? String(number) : 'NULL';\n}\nfunction shanghaiTime(value) {\n  if (!value) return '';\n  return new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(value));\n}\nfunction shanghaiHour(value) {\n  if (!value) return null;\n  return Number(new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Shanghai', hour: '2-digit', hour12: false }).format(new Date(value)));\n}\nfunction parseRaw(raw) {\n  if (!raw) return {};\n  if (typeof raw === 'object') return raw;\n  try { return JSON.parse(raw); } catch { return {}; }\n}\nfunction avg(values) {\n  if (!values.length) return null;\n  return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);\n}\nfunction weekdayFromDate(dateText) {\n  const dateObj = new Date(`${dateText}T12:00:00+08:00`);\n  const weekday = dateObj.getDay();\n  return weekday === 0 ? 6 : weekday - 1;\n}\n\nconst normalizedSamples = samples.map((sample) => ({\n  value: Number(sample.value),\n  ts: sample.ts,\n  confidence: sample.confidence || 'measured',\n  raw: parseRaw(sample.raw_json),\n})).filter((sample) => Number.isFinite(sample.value));\n\nconst reportTs = `${date}T02:00:00+08:00`;\nconst wd = Number(row.holiday_weekday ?? weekdayFromDate(date));\nconst holidayRaw = parseRaw(row.holiday_raw);\nconst holidayName = holidayRaw?.holiday_name || '';\nconst isHoliday = Number(row.is_holiday || 0);\n\nif (!normalizedSamples.length) {\n  const reportText = [`${CN.titlePrefix}（${date}）`, CN.scope, CN.noSamples].join('\\n');\n  const raw = { date, sample_count: 0, generated_by: 'n8n_daily_report', generated_at: new Date().toISOString() };\n  const sql = `INSERT INTO crowd_data (ts, source, metric, value, text_value, unit, confidence, raw_json, created_at)\nVALUES (${sqlText(reportTs)}, 'daily_report', 'text', NULL, ${sqlText(reportText)}, '', 'generated', ${sqlText(JSON.stringify(raw))}, NOW())\nON CONFLICT (ts, source, metric) DO UPDATE SET text_value = EXCLUDED.text_value, confidence = EXCLUDED.confidence, raw_json = EXCLUDED.raw_json, created_at = NOW()`;\n  return [{ json: { label: 'daily_report.text', sql, reportText, date, sampleCount: 0 } }];\n}\n\nconst values = normalizedSamples.map((sample) => sample.value);\nconst max = Math.max(...values);\nconst min = Math.min(...values);\nconst average = avg(values);\nconst sampleValueSum = Math.round(values.reduce((sum, value) => sum + value, 0));\nconst peak = normalizedSamples.reduce((best, current) => (current.value > best.value ? current : best), normalizedSamples[0]);\nconst peakHour = shanghaiHour(peak.ts);\nconst hourGroups = new Map();\nfor (const sample of normalizedSamples) {\n  const hour = shanghaiHour(sample.ts);\n  if (hour === null) continue;\n  if (!hourGroups.has(hour)) hourGroups.set(hour, []);\n  hourGroups.get(hour).push(sample.value);\n}\nconst highHours = [...hourGroups.entries()].map(([hour, hourValues]) => ({ hour, avg: avg(hourValues) })).filter((item) => item.avg !== null).sort((a, b) => b.avg - a.avg).slice(0, 3).map((item) => `${item.hour}${CN.pointApprox}${item.avg}${CN.people.trim()}`).join(CN.sep);\nconst officialUpdates = normalizedSamples.filter((sample) => sample.raw?.source === 'sh_a_scenic_realtime' && sample.raw?.time).map((sample) => ({ collectTs: sample.ts, officialTime: sample.raw.time, value: sample.value })).filter((item, index, arr) => arr.findIndex((x) => x.officialTime === item.officialTime) === index).sort((a, b) => String(a.officialTime).localeCompare(String(b.officialTime)));\nconst firstOfficialUpdate = officialUpdates[0];\nconst lastSample = normalizedSamples.at(-1);\nconst lines = [`${CN.titlePrefix}（${date}）`, CN.scope, `${CN.sampleLineA}${normalizedSamples.length}${CN.sampleLineB}${normalizedSamples.length}${CN.sampleLineC}`];\nif (firstOfficialUpdate) lines.push(`${CN.firstUpdateA}${String(firstOfficialUpdate.officialTime).slice(11, 16)}${CN.firstUpdateB}${shanghaiTime(firstOfficialUpdate.collectTs)}，${Math.round(firstOfficialUpdate.value)}${CN.people}${CN.closeParen}`);\nlines.push(`${CN.maxA}${Math.round(max)}${CN.maxB}${shanghaiTime(peak.ts)}${CN.closeParen}`, `${CN.avgA}${average}${CN.people}`, `${CN.minA}${Math.round(min)}${CN.people}`);\nif (officialUpdates.length) lines.push(`${CN.windowA}${String(officialUpdates.at(-1).officialTime).slice(11, 16)}`);\nif (highHours) lines.push(`${CN.peakHoursA}${highHours}`);\nif (lastSample) {\n  const comfort = lastSample.raw?.comfort ? `${CN.comfortA}${lastSample.raw.comfort}` : '';\n  lines.push(`${CN.lastA}${shanghaiTime(lastSample.ts)}，${Math.round(lastSample.value)}${CN.people}${comfort}`);\n}\nif (holidayName) lines.push(`${CN.contextA}${holidayName}`);\nconst reportText = lines.join('\\n');\nconst raw = { date, generated_by: 'n8n_daily_report', generated_at: new Date().toISOString(), sample_count: normalizedSamples.length, max_crowd: Math.round(max), avg_crowd: average, min_crowd: Math.round(min), peak_hour: peakHour, is_holiday: isHoliday, holiday_name: holidayName || null };\nconst notes = ['auto_summary_n8n', `samples=${normalizedSamples.length}`, `in_park_sample_sum=${sampleValueSum}`, 'total_visitors=null_without_cumulative_source', `confidence={\"measured\":${normalizedSamples.length}}`, holidayName ? `holiday=${holidayName}` : null].filter(Boolean).join('; ');\nconst summarySql = `INSERT INTO daily_summary (date, weekday, max_crowd, avg_crowd, peak_hour, total_visitors, notes, weather_desc, temperature_high, temperature_low, is_holiday, holiday_name)\nVALUES (${sqlText(date)}, ${sqlNumber(wd)}, ${sqlNumber(max)}, ${sqlFloat(average)}, ${sqlNumber(peakHour)}, NULL, ${sqlText(notes)}, NULL, NULL, NULL, ${sqlNumber(isHoliday)}, ${sqlText(holidayName || null)})\nON CONFLICT (date) DO UPDATE SET weekday = EXCLUDED.weekday, max_crowd = EXCLUDED.max_crowd, avg_crowd = EXCLUDED.avg_crowd, peak_hour = EXCLUDED.peak_hour, total_visitors = EXCLUDED.total_visitors, notes = EXCLUDED.notes, weather_desc = EXCLUDED.weather_desc, temperature_high = EXCLUDED.temperature_high, temperature_low = EXCLUDED.temperature_low, is_holiday = EXCLUDED.is_holiday, holiday_name = EXCLUDED.holiday_name`;\nconst reportSql = `INSERT INTO crowd_data (ts, source, metric, value, text_value, unit, confidence, raw_json, created_at)\nVALUES (${sqlText(reportTs)}, 'daily_report', 'text', NULL, ${sqlText(reportText)}, '', 'generated', ${sqlText(JSON.stringify(raw))}, NOW())\nON CONFLICT (ts, source, metric) DO UPDATE SET text_value = EXCLUDED.text_value, confidence = EXCLUDED.confidence, raw_json = EXCLUDED.raw_json, created_at = NOW()`;\nreturn [{ json: { label: 'daily_summary', sql: summarySql, reportText, date, sampleCount: normalizedSamples.length } }, { json: { label: 'daily_report.text', sql: reportSql, reportText, date, sampleCount: normalizedSamples.length } }];"
+      },
+      "id": "node-build-report",
+      "name": "Build report text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [940, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://ep-sweet-river-aovxgd0t-pooler.c-2.ap-southeast-1.aws.neon.tech/sql",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Neon-Connection-String",
+              "value": "={{ $env.NEON_URL }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: $json.sql }) }}",
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "node-write-neon",
+      "name": "Write report result",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1180, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nreturn [{ json: { status: 'ok', wrote: items.length, finished_at: new Date().toISOString() } }];"
+      },
+      "id": "node-finish",
+      "name": "Done",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1410, 300]
+    }
+  ],
+  "connections": {
+    "Daily 02:00 trigger": {
+      "main": [
+        [
+          {
+            "node": "Build report query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build report query": {
+      "main": [
+        [
+          {
+            "node": "Query yesterday data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query yesterday data": {
+      "main": [
+        [
+          {
+            "node": "Build report text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build report text": {
+      "main": [
+        [
+          {
+            "node": "Write report result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write report result": {
+      "main": [
+        [
+          {
+            "node": "Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "timezone": "Asia/Shanghai",
+    "executionOrder": "v1"
+  },
+  "id": "LKFfYC5jFN9MhW5u"
+}

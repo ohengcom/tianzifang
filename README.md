@@ -2,7 +2,7 @@
 
 Collects and summarizes Tianzifang crowd-related signals with a single Node.js runtime and PostgreSQL storage.
 
-Current version: `1.4.3`
+Current version: `1.4.4`
 
 ## Stack
 
@@ -85,15 +85,15 @@ tianzifang/
 > ⚠️ N8N 工作流不使用本地 `collectors/` 目录下的 Node.js 采集器。
 > 本地采集器用于手动测试和 `--schedule` 模式，两者独立运行。
 
-### 2. 每日报告（OpenClaw Cron 定时任务）
+### 2. 每日报告（N8N 工作流）
 
-**执行方式：** OpenClaw 隔离会话自动运行
+**执行方式：** N8N 云端定时触发，不依赖本地代码
 
-- 任务名称：`早间汇报`
-- 时间：每天 08:00（Asia/Shanghai）
-- 田子坊数据作为汇报的第 2 项自动包含
-- 执行命令：`node main.js --report-yesterday`
-- 配置备份：[`openclaw/morning-report-cron.json`](openclaw/morning-report-cron.json)
+- 工作流名称：`田子坊每日客流报告`
+- 触发器：`0 2 * * *`（每天 02:00，Asia/Shanghai）
+- 流程：定时触发 → 查询 Neon 昨日 measured 样本 → 生成中文日报文本 → 写入 Neon
+- 写入位置：`daily_summary` 汇总行，以及 `crowd_data.source='daily_report'` / `metric='text'` 的日报文本
+- 工作流备份：[`n8n/tianzifang-daily-report-workflow.json`](n8n/tianzifang-daily-report-workflow.json)
 
 报告内容包含：
 - 昨日样本数、实测/冻结/估算分布
@@ -154,6 +154,12 @@ This project intentionally supports the Neon PostgreSQL path only. There is no l
 - Source files are UTF-8. If PowerShell displays Chinese text as mojibake, verify with a UTF-8 reader before treating the file as corrupted.
 
 ## Release Notes
+
+### 1.4.4
+
+- Added a dedicated N8N daily report workflow scheduled at 02:00 Asia/Shanghai.
+- Moved Tianzifang daily report generation from the OpenClaw path into N8N cloud automation.
+- The N8N daily report writes measured-only summary data into `daily_summary` and stores the generated Chinese report text in `crowd_data`.
 
 ### 1.4.3
 

@@ -2,7 +2,7 @@
 
 This document describes the v2 redesign for the Tianzifang crowd data project. The upgrade is additive: it keeps the legacy `crowd_data` and `daily_summary` tables, then adds a normalized observation layer and derived feature tables on Neon.
 
-Current release: `1.4.3`
+Current release: `1.4.4`
 
 ## Goals
 
@@ -143,6 +143,12 @@ npm run v2:summary
 - Add a no-script HTML/SVG WordPress embed with measured-only trend lines and 7:00-19:00 hourly quiet-period guidance.
 - Update the N8N workflow backup so production collection no longer writes wttr.in weather into the legacy path.
 
+### P2 - Completed in v1.4.4
+
+- Add a dedicated N8N cloud workflow, `田子坊每日客流报告`, scheduled at 02:00 Asia/Shanghai.
+- Generate the daily measured-only Chinese report inside N8N from Neon HTTP SQL results, without relying on local Node.js or OpenClaw.
+- Write N8N-generated report outputs back to Neon: `daily_summary` for structured daily metrics and `crowd_data.source='daily_report' / metric='text'` for the human-readable report.
+
 ### P2 - Completed in v1.4.2
 
 - Add an import path for manually curated historical observations with source, confidence, quote, URL, and period notes.
@@ -152,7 +158,7 @@ npm run v2:summary
 
 ### P2 - Next
 
-- Schedule `npm run v2:collect:amap-weather`, `npm run v2:derive -- START END`, and `npm run v2:report-html` in the production automation path after each collection window.
+- Schedule `npm run v2:collect:amap-weather`, `npm run v2:derive -- START END`, and the WordPress HTML report refresh in the production automation path after each collection window.
 - Add alerting for stale/missing `gov_tour` measured samples, AMap HTTP/schema errors, and unusually sparse hourly coverage.
 - Add tests for AMap schema validation and daily feature calculations.
 
